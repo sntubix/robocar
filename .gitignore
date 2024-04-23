@@ -1,0 +1,8 @@
+.vscode/
+build/
+install/
+log/
+*__pycache__/
+rospack_cache_*
+log*.csv
+scripts/local/

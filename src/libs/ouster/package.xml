@@ -1,0 +1,12 @@
+<package format="3">
+  <name>ouster</name>
+  <version>0.5.2</version>
+  <description>Ouster SDK - libraries and tools for Ouster Lidar Sensors</description>
+  <maintainer email="support@ouster.io">Ouster</maintainer>
+  <license>BSD-3-Clause</license>
+  <url>https://github.com/ouster-lidar/ouster_example</url>
+  <buildtool_depend>catkin</buildtool_depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

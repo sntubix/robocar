@@ -1,0 +1,19 @@
+<package format="3">
+  <name>msg_interfaces</name>
+  <version>0.0.1</version>
+  <description>Messages module</description>
+  <author>Mehdi TESTOURI</author>
+  <author>Gamal ELGHAZALY</author>
+  <maintainer email="mehdi.testouri@uni.lu">Mehdi TESTOURI</maintainer>
+  <maintainer email="gamal.elghazaly@uni.lu">Gamal ELGHAZALY</maintainer>
+  <license>MIT</license>
+  <url>https://gitlab.uni.lu/gelghazaly/robocar</url>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>std_msgs</depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

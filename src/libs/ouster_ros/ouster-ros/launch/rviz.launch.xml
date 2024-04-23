@@ -1,0 +1,14 @@
+<launch>
+
+  <arg name="ouster_ns" default="ouster"
+    description="Override the default namespace of all ouster nodes"/>
+  <arg name="rviz_config" default="$(find-pkg-share ouster_ros)/config/viz.rviz"
+    description="optional rviz config file"/>
+
+  <group>
+    <push-ros-namespace namespace="$(var ouster_ns)"/>
+    <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen"
+      launch-prefix="bash -c 'sleep 5; $0 $@'" args="-d $(var rviz_config)"/>
+  </group>
+
+</launch>

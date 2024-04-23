@@ -1,0 +1,9 @@
+path: /host/dataset
+train: images/train
+val: images/val
+test:
+
+names:
+  0: green
+  1: yellow
+  2: red

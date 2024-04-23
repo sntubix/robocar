@@ -1,0 +1,16 @@
+<package format="3">
+  <name>simulation</name>
+  <version>0.0.1</version>
+  <description>Simulation module</description>
+  <author>Mehdi TESTOURI</author>
+  <author>Gamal ELGHAZALY</author>
+  <maintainer email="mehdi.testouri@uni.lu">Mehdi TESTOURI</maintainer>
+  <maintainer email="gamal.elghazaly@uni.lu">Gamal ELGHAZALY</maintainer>
+  <license>MIT</license>
+  <url>https://gitlab.uni.lu/gelghazaly/robocar</url>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>common</depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -1,0 +1,234 @@
+{
+    "cycle": {
+        "global": {
+            "period": 50,
+            "platform_id": 1,
+            "map": "src/modules/map/maps/kirchberg.geojson",
+            "target_speed": 40.0,
+            "vehicle_length": 4.14,
+            "vehicle_width": 1.8,
+            "wheel_base": 2.57,
+            "rss_min_dist": 7.0,
+            "rss_reaction_time": 0.3,
+            "rss_max_accel": 2.5,
+            "rss_min_brake": 1.5,
+            "rss_max_brake": 9.0
+        },
+        "planning": {
+            "enable": true,
+            "planning_component": {
+                "period": 50,
+                "margin_up": 0.30,
+                "margin_down": 0.25,
+                "objects_window": 10,
+                "obdv_window": 20,
+                "cl_file": "src/modules/planning/src/planning/mppi/mppi.cl",
+                "local_size": 256,
+                "multiplier": 10,
+                "N": 18,
+                "delta": 0.25,
+                "lambda": 100.0,
+                "sigma_s": 0.03,
+                "sigma_a": 0.85,
+                "max_steering": 0.55,
+                "max_steering_rate": 0.11,
+                "max_accel": 1.1,
+                "min_accel": -1.5,
+                "diverge_threshold": 1.0,
+                "diverge_left": 0.5,
+                "diverge_right": 0.5,
+                "stop_velocity": 1.5
+            }
+        },
+        "control": {
+            "enable": true,
+            "control_component": {
+                "minimum_distance": 6.5,
+                "target_time": 1.5,
+                "curvature_theta": 0.14,
+                "steering_kp": 0.63,
+                "max_steering_kp": 5.2,
+                "max_steering": 0.57,
+                "velocity_kp_a": 0.35,
+                "velocity_kp_b": 0.25,
+                "velocity_ki_a": 0.002,
+                "velocity_ki_b": 0.008,
+                "velocity_ki_window": 40,
+                "velocity_kd_a": 0.02,
+                "velocity_kd_b": 0.04,
+                "safe_dist_kp": 0.11,
+                "safe_dist_ki": 0.003,
+                "safe_dist_ki_window": 40,
+                "safe_dist_kd": 0.02,
+                "smooth_brake": 0.32,
+                "smooth_brake_min_dist": 10.0,
+                "smooth_brake_duration": 2000,
+                "th_filter_coef": 0.9,
+                "th_filter_duration": 700,
+                "stop_velocity": 2.0,
+                "max_throttle": 0.6,
+                "max_brake": 0.5
+            }
+        },
+        "perception": {
+            "enable": true,
+            "lidar_component": {
+                "roi_min_x": 2.0,
+                "roi_max_x": 70.0,
+                "roi_min_y": -8.0,
+                "roi_max_y": 8.5,
+                "roi_min_z": 0.3,
+                "roi_max_z": 2.5,
+                "leaf_size": 0.05,
+                "ec_tolerance": 0.45,
+                "ec_min_size": 4,
+                "ec_max_size": 600,
+                "obj_min_height": 0.05
+            }
+        },
+        "vehicle": {
+            "enable": true,
+            "vehicle_component": {
+                "period": 25,
+                "can_timeout": 500,
+                "gnss_timeout": 500,
+                "gnss_uncertainty": 0.5,
+                "lidar_timeout": 1000,
+                "camera_timeout": 500,
+                "planning_timeout": 500,
+                "steering_ratio": 15.7,
+                "steering_speed": 320.0,
+                "steering_safety_coef": 0.021,
+                "ma_steering_window": 5,
+                "ma_throttle_window": 5,
+                "ma_brake_window": 5
+            }
+        },
+        "drivers": {
+            "enable": true,
+            "actuator_component": {
+                "enable": true,
+                "period": 25,
+                "can_dev": "can0"
+            },
+            "alexa_component": {
+                "enable": false,
+                "period": 500,
+                "serial_port": "/dev/ttyUSB0"
+            },
+            "camera_component": {
+                "enable": true,
+                "period": 40,
+                "device_id": 4,
+                "width": 1600,
+                "height": 900,
+                "flip": true
+            },
+            "joystick_component": {
+                "enable": false,
+                "max_steering": 0.57,
+                "steering_pow": 2.2
+            },
+            "gsof_component": {
+                "enable": true,
+                "period": 10,
+                "host": "192.168.1.101",
+                "port": 28001,
+                "leap_seconds": 18
+            },
+            "ouster_component": {
+                "enable": true,
+                "period": 10,
+                "src_ip": "192.168.1.102",
+                "dest_ip": "192.168.1.100",
+                "lidar_port": 7502,
+                "imu_port": 7503,
+                "tf_x": 1.31,
+                "tf_y": -0.01,
+                "tf_z": 1.53,
+                "tf_theta": -1.5
+            }
+        },
+        "simulation": {
+            "enable": false,
+            "sim_vehicle_component": {
+                "enable": true,
+                "steering_speed": 0.3557,
+                "steering_kp": 0.8,
+                "min_accel": -9.2,
+                "max_accel": 2.52,
+                "x": 0.0,
+                "y": 0.0,
+                "yaw": 0.2
+            },
+            "sim_objects_component": {
+                "enable": true,
+                "follow_enable": true,
+                "follow_dim_x": 4.2,
+                "follow_dim_y": 2.0,
+                "follow_dim_z": 1.5,
+                "follow_speed": 10.0,
+                "follow_accel": 2.0,
+                "follow_max_dist": 100.0,
+                "follow_drive_period": 15.0,
+                "follow_brake_period": 9.0,
+                "close_enable": false,
+                "close_dim_x": 4.2,
+                "close_dim_y": 2.0,
+                "close_dim_z": 1.5,
+                "close_offset_x": 14.0,
+                "close_offset_y": 4.0,
+                "close_speed": 8.5,
+                "close_accel": 2.0,
+                "close_max_dist": 100.0,
+                "close_wait_period": 10.0,
+                "close_drive_period": 10.0,
+                "static_enable": false,
+                "static_dim_x": 4.2,
+                "static_dim_y": 2.0,
+                "static_dim_z": 1.5,
+                "static_x": 0.0,
+                "static_y": -0.5,
+                "static_max_dist": 100.0
+            }
+        },
+        "localization": {
+            "enable": true,
+            "localization_component": {}
+        },
+        "map": {
+            "enable": true,
+            "map_component": {
+                "enable": true,
+                "waypoints_length": 15,
+                "waypoints_interdistance": 0.3,
+                "waypoints_interdistance_max": 15.0,
+                "waypoints_delta": 0.5,
+                "x_overlap_offset": 55.0
+            },
+            "mapping_component": {
+                "enable": true,
+                "period": 500,
+                "waypoints_interval": 1.0
+            }
+        },
+        "visualization": {
+            "enable": true,
+            "visualization_component": {
+				"vehicle_mesh": "src/modules/visualization/mesh/low_poly_car.fbx",
+                "map_geofeatures": "src/modules/map/maps/belval_geofeatures.geojson",
+                "map_virtual_geofeatures": "src/modules/map/maps/belval_virtual_geofeatures.geojson"
+			},
+            "dashboard_component": {
+                "rviz_config": "src/modules/visualization/config/visualization.rviz"
+            }
+        },
+        "logging": {
+            "enable": true,
+            "logging_component": {
+                "queue_size": 2,
+                "value_names": "latitude,longitude,steering,steering_control,velocity,target_velocity,target_accel,throttle_control,velocity_kp,velocity_ki,velocity_kd,safe_dist,safe_dist_kp,safe_dist_ki,safe_dist_kd,obstacle_d,obstacle_dv"
+            }
+        }
+    }
+}

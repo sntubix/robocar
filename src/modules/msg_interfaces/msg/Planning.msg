@@ -1,0 +1,7 @@
+std_msgs/Header header
+int64 state
+Trajectory trajectory
+float64 target_velocity
+int32 obstacle_type
+float64 obstacle_d
+float64 obstacle_dv
