@@ -1,0 +1,34 @@
+Software Robocar is copyright (c) 2021-2024 University of Luxembourg
+Licensed under the MIT License, see LICENSE.txt.
+
+Authors: Mehdi Testouri, Gamal Elghazaly, Raphael Frank
+
+The software Robocar includes the following components.
+
+geodesy.h, MIT license
+Copyright (c) 2018 Christian Berger
+
+thread_pool.hpp, MIT license
+Copyright (c) 2021 Barak Shoshany
+
+linefit_ground_segmentation, BSD-3-Clause license
+Copyright (c) 2017 Lorenz Wellhausen. All rights reserved.
+See corresponding license file at src/libs/linefit_ground_segmentation/LICENSE.
+
+oscc, MIT license
+Copyright (c) 2017 PolySync Technologies, Inc. All rights reserved.
+See corresponding license file at src/libs/oscc/LICENSE.
+
+ouster, BSD-3-Clause license
+Copyright (c) 2018-2022 Ouster, Inc. All rights reserved.
+See corresponding license file at src/libs/ouster/LICENSE.
+
+ouster_ros, BSD-3-Clause license
+Copyright (c) 2018-2023 Ouster, Inc. All rights reserved.
+See corresponding license file at src/libs/ouster_ros/LICENSE.
+
+low_poly_car.fbx, Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0) license
+See corresponding license at https://creativecommons.org/licenses/by-sa/4.0/.
+No modifications were made to the source material.
+Author: "Creative Mango" on sketchfab.com
+Title: "Low Poly Car"
