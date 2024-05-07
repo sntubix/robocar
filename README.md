@@ -21,5 +21,18 @@ Please note that some specific adjustments might be needed for deployment in a v
 First, source using `source install/setup.sh`.<br>
 RoboCar can be run using ROS2 launch : `ros2 launch startup robocar.launch`.
 
+## Citation
+If you find RoboCar useful or relevant for your research, please cite our paper:
+```bibtex
+@article{testouri2024robocar,
+  title={RoboCar: A Rapidly Deployable Open-Source Platform for Autonomous Driving Research},
+  author={Mehdi Testouri and Gamal Elghazaly and Raphael Frank},
+  year={2024},
+  eprint={2405.03572},
+  archivePrefix={arXiv},
+  primaryClass={cs.RO}
+}
+```
+
 ## License
 See [NOTICE](./NOTICE.txt) and [LICENSE](./LICENSE.txt).
