@@ -1,14 +1,15 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #include "localization/localization_component.h"
 #include "common/geodesy.h"
 
 using namespace robocar::localization;
 
-LocalizationComponent::LocalizationComponent(const cycle::Params& params) : cycle::Module(params) {
+LocalizationComponent::LocalizationComponent(const cycle::Params &params) : cycle::Module(params)
+{
 	// publishers
 	_pub_loc = this->create_publisher<msg::Localization>("localization/position", 1);
 	_pub_log = this->create_publisher<msg::LogEntry>("logging/entry", 1);
@@ -18,7 +19,8 @@ LocalizationComponent::LocalizationComponent(const cycle::Params& params) : cycl
 															   this, std::placeholders::_1));
 }
 
-void LocalizationComponent::on_gnss(const msg::GNSS& gnss) {
+void LocalizationComponent::on_gnss(const msg::GNSS &gnss)
+{
 	msg::Localization loc;
 	loc.header.stamp = gnss.header.stamp;
 	loc.header.frame_id = "map";

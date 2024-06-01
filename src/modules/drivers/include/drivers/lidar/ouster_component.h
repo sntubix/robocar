@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef DRIVERS_LIDAR_OUSTER_COMPONENT_H
 #define DRIVERS_LIDAR_OUSTER_COMPONENT_H
@@ -13,13 +13,15 @@
 #include <ouster/types.h>
 #include <ouster/lidar_scan.h>
 
-namespace robocar::drivers::lidar {
+namespace robocar::drivers::lidar
+{
 	// UDP buffer size, must be at least lidar_packet_bytes + 1 bytes
 	const size_t UDP_BUF_SIZE = 65536;
 
-	class OusterComponent : public cycle::Service {
+	class OusterComponent : public cycle::Service
+	{
 	public:
-		OusterComponent(const cycle::Params& params);
+		OusterComponent(const cycle::Params &params);
 
 		void serve() override;
 

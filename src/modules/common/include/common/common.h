@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef ROBOCAR_COMMON_H
 #define ROBOCAR_COMMON_H
@@ -9,7 +9,8 @@
 #include "cycle/cycle.h"
 #include "common/messages.h"
 
-namespace robocar {
+namespace robocar
+{
     // status
     const int STATUS_OK = 0;
     const int STATUS_WARNING = 1;

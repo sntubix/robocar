@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef LOCALIZATION_LOCALIZATION_COMPONENT_H
 #define LOCALIZATION_LOCALIZATION_COMPONENT_H
@@ -9,10 +9,12 @@
 #include "cycle/cycle.h"
 #include "common/common.h"
 
-namespace robocar::localization {
-	class LocalizationComponent : public cycle::Module {
+namespace robocar::localization
+{
+	class LocalizationComponent : public cycle::Module
+	{
 	public:
-		LocalizationComponent(const cycle::Params& params);
+		LocalizationComponent(const cycle::Params &params);
 
 	private:
 		// publishers
@@ -21,7 +23,7 @@ namespace robocar::localization {
 		// subscriber
 		rclcpp::Subscription<msg::GNSS>::SharedPtr _sub_gnss;
 
-		void on_gnss(const msg::GNSS& gnss);
+		void on_gnss(const msg::GNSS &gnss);
 	};
 }
 

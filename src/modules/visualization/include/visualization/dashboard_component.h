@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef VISUALIZATION_DASHBOARD_COMPONENT_H
 #define VISUALIZATION_DASHBOARD_COMPONENT_H
@@ -18,11 +18,13 @@
 #include <QInputDialog>
 #include <QTimer>
 
-namespace robocar::visualization {
-    class DashboardComponent : public QWidget, public cycle::Module {
+namespace robocar::visualization
+{
+    class DashboardComponent : public QWidget, public cycle::Module
+    {
         Q_OBJECT
     public:
-        explicit DashboardComponent(const cycle::Params& params, QApplication* qt_app, QWidget* parent = 0);
+        explicit DashboardComponent(const cycle::Params &params, QApplication *qt_app, QWidget *parent = 0);
 
     signals:
         void vehicle_changed(bool ad_engaged, int steering, int throttle,
@@ -55,26 +57,26 @@ namespace robocar::visualization {
         std::mutex _m_tfl;
         int _tfl_counter = 0;
 
-        QApplication* _qt_app;
+        QApplication *_qt_app;
         // rviz panel
-        rviz_common::VisualizationFrame* _rviz_panel;
+        rviz_common::VisualizationFrame *_rviz_panel;
         // status panel
-        QLabel* _ad_status;
-        QLabel* _mapping_status;
-        QLabel* _vehicle_status;
-        QLabel* _localization_status;
-        QLabel* _perception_status;
+        QLabel *_ad_status;
+        QLabel *_mapping_status;
+        QLabel *_vehicle_status;
+        QLabel *_localization_status;
+        QLabel *_perception_status;
         // center panel
-        QLabel* _planning;
-        QLabel* _speed;
-        QLabel* _speed_limit;
-        QLabel* _green_light;
-        QLabel* _yellow_light;
-        QLabel* _red_light;
+        QLabel *_planning;
+        QLabel *_speed;
+        QLabel *_speed_limit;
+        QLabel *_green_light;
+        QLabel *_yellow_light;
+        QLabel *_red_light;
         // actuation panel
-        QLabel* _steering;
-        QLabel* _throttle;
-        QLabel* _brake;
+        QLabel *_steering;
+        QLabel *_throttle;
+        QLabel *_brake;
 
         // publishers
         rclcpp::Publisher<msg::AdToggle>::SharedPtr _pub_ad_toggle;
@@ -86,40 +88,47 @@ namespace robocar::visualization {
         rclcpp::Subscription<msg::Localization>::SharedPtr _sub_loc;
         rclcpp::Subscription<msg::Planning>::SharedPtr _sub_planning;
         rclcpp::Subscription<msg::Object3d>::SharedPtr _sub_tfl;
-		rclcpp::Subscription<msg::ActCmd>::SharedPtr _sub_act_cmd;
+        rclcpp::Subscription<msg::ActCmd>::SharedPtr _sub_act_cmd;
         rclcpp::Subscription<msg::Mapping>::SharedPtr _sub_mapping_status;
 
-        void on_vehicle(const msg::Vehicle& vehicle);
-        void on_localization(const msg::Localization& loc);
-        void on_trajectory(const msg::Planning& trajectory);
-        void on_traffic_light(const msg::Object3d& tfl);
-        void on_act_cmd(const msg::ActCmd& act_cmd);
-        void on_mapping_status(const msg::Mapping& mapping);
+        void on_vehicle(const msg::Vehicle &vehicle);
+        void on_localization(const msg::Localization &loc);
+        void on_trajectory(const msg::Planning &trajectory);
+        void on_traffic_light(const msg::Object3d &tfl);
+        void on_act_cmd(const msg::ActCmd &act_cmd);
+        void on_mapping_status(const msg::Mapping &mapping);
         void on_tfl_timer();
 
-        void keyPressEvent(QKeyEvent* event) override {
+        void keyPressEvent(QKeyEvent *event) override
+        {
             auto now = cycle::Time::now().ms();
 
-            if (!event->isAutoRepeat()) {
+            if (!event->isAutoRepeat())
+            {
                 bool input = false;
-                if (event->key() == Qt::Key_A) {
+                if (event->key() == Qt::Key_A)
+                {
                     input = true;
                     _steering_input = 0.05;
                 }
-                if (event->key() == Qt::Key_D) {
+                if (event->key() == Qt::Key_D)
+                {
                     input = true;
                     _steering_input = -0.05;
                 }
-                if (event->key() == Qt::Key_W) {
+                if (event->key() == Qt::Key_W)
+                {
                     input = true;
                     _throttle_input = 0.25;
                 }
-                if (event->key() == Qt::Key_Space) {
+                if (event->key() == Qt::Key_Space)
+                {
                     input = true;
                     _brake_input = 0.4;
                 }
 
-                if (input) {
+                if (input)
+                {
                     msg::ActCmd act_cmd;
                     act_cmd.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
                     act_cmd.steering = _steering_input;
@@ -130,24 +139,31 @@ namespace robocar::visualization {
             }
         }
 
-        void keyReleaseEvent(QKeyEvent* event) override {
+        void keyReleaseEvent(QKeyEvent *event) override
+        {
             auto now = cycle::Time::now().ms();
 
-            if (!event->isAutoRepeat()) {
-                if (event->key() == Qt::Key_Shift) {
+            if (!event->isAutoRepeat())
+            {
+                if (event->key() == Qt::Key_Shift)
+                {
                     msg::AdToggle ad_toggle;
-                    if (!_ad_engaged) {
+                    if (!_ad_engaged)
+                    {
                         ad_toggle.toggle = true;
                     }
-                    else {
+                    else
+                    {
                         ad_toggle.toggle = false;
                     }
                     _pub_ad_toggle->publish(ad_toggle);
                 }
 
-                if (event->key() == Qt::Key_M) {
+                if (event->key() == Qt::Key_M)
+                {
                     msg::Mapping mapping;
-                    if (!_mapping) {
+                    if (!_mapping)
+                    {
                         // retrieve map filename from input dialog
                         this->releaseKeyboard();
                         auto input = QInputDialog(this);
@@ -160,14 +176,16 @@ namespace robocar::visualization {
                         auto text = input.textValue();
                         this->grabKeyboard();
 
-                        if (ret && !text.isEmpty()) {
+                        if (ret && !text.isEmpty())
+                        {
                             mapping.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
                             mapping.status = true;
                             mapping.filename.data = text.toStdString();
                             _pub_mapping_toggle->publish(mapping);
                         }
                     }
-                    else {
+                    else
+                    {
                         mapping.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
                         mapping.status = false;
                         mapping.filename.data = "";
@@ -176,24 +194,29 @@ namespace robocar::visualization {
                 }
 
                 bool input = false;
-                if (event->key() == Qt::Key_A) {
+                if (event->key() == Qt::Key_A)
+                {
                     input = true;
                     _steering_input = 0.0;
                 }
-                if (event->key() == Qt::Key_D) {
+                if (event->key() == Qt::Key_D)
+                {
                     input = true;
                     _steering_input = 0.0;
                 }
-                if (event->key() == Qt::Key_W) {
+                if (event->key() == Qt::Key_W)
+                {
                     input = true;
                     _throttle_input = 0.0;
                 }
-                if (event->key() == Qt::Key_Space) {
+                if (event->key() == Qt::Key_Space)
+                {
                     input = true;
                     _brake_input = 0.0;
                 }
 
-                if (input) {
+                if (input)
+                {
                     msg::ActCmd act_cmd;
                     act_cmd.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
                     act_cmd.steering = _steering_input;
@@ -203,7 +226,8 @@ namespace robocar::visualization {
                 }
 
                 std::unique_lock<std::mutex> lock(_m_tfl);
-                if (event->key() == Qt::Key_T) {
+                if (event->key() == Qt::Key_T)
+                {
                     msg::TrafficLight tfl;
                     tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
                     tfl.type = OBJ_TFL_NONE;
@@ -211,7 +235,8 @@ namespace robocar::visualization {
                     _tfl_counter++;
                     QTimer::singleShot(5000, this, &DashboardComponent::on_tfl_timer);
                 }
-                if (event->key() == Qt::Key_G) {
+                if (event->key() == Qt::Key_G)
+                {
                     msg::TrafficLight tfl;
                     tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
                     tfl.type = OBJ_TFL_GREEN;
@@ -219,7 +244,8 @@ namespace robocar::visualization {
                     _tfl_counter++;
                     QTimer::singleShot(5000, this, &DashboardComponent::on_tfl_timer);
                 }
-                if (event->key() == Qt::Key_Y) {
+                if (event->key() == Qt::Key_Y)
+                {
                     msg::TrafficLight tfl;
                     tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
                     tfl.type = OBJ_TFL_YELLOW;
@@ -227,7 +253,8 @@ namespace robocar::visualization {
                     _tfl_counter++;
                     QTimer::singleShot(5000, this, &DashboardComponent::on_tfl_timer);
                 }
-                if (event->key() == Qt::Key_R) {
+                if (event->key() == Qt::Key_R)
+                {
                     msg::TrafficLight tfl;
                     tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
                     tfl.type = OBJ_TFL_RED;
@@ -238,7 +265,7 @@ namespace robocar::visualization {
             }
         }
 
-        void closeEvent(QCloseEvent* event) override;
+        void closeEvent(QCloseEvent *event) override;
     };
 }
 

@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef VISUALIZATION_VISUALIZATION_COMPONENT_H
 #define VISUALIZATION_VISUALIZATION_COMPONENT_H
@@ -14,10 +14,12 @@
 #include <tf2_ros/transform_listener.h>
 #include <visualization_msgs/msg/marker_array.hpp>
 
-namespace robocar::visualization {
-	class VisualizationComponent : public cycle::Service {
+namespace robocar::visualization
+{
+	class VisualizationComponent : public cycle::Service
+	{
 	public:
-		VisualizationComponent(const cycle::Params& params);
+		VisualizationComponent(const cycle::Params &params);
 
 		void serve() override;
 
@@ -69,20 +71,20 @@ namespace robocar::visualization {
 		visualization_msgs::msg::Marker _trajectory_marker;
 		visualization_msgs::msg::MarkerArray _circle_markers;
 
-		void on_localization(const msg::Localization& loc);
-		void on_trace(const msg::Path& trace);
-		void on_waypoints(const msg::Path& waypoints);
-		void on_trajectory(const msg::Planning& trajectory);
-		void on_control_target(const msg::Waypoint& target);
-		void on_objects3d(const msg::Objects3d& objects);
-		void on_objects2d(const msg::Objects2d& objects);
-		void on_objects_circles(const msg::ObjectsCircles& objects_circles);
-		void on_image(const msg::CompressedImage::ConstSharedPtr& image);
+		void on_localization(const msg::Localization &loc);
+		void on_trace(const msg::Path &trace);
+		void on_waypoints(const msg::Path &waypoints);
+		void on_trajectory(const msg::Planning &trajectory);
+		void on_control_target(const msg::Waypoint &target);
+		void on_objects3d(const msg::Objects3d &objects);
+		void on_objects2d(const msg::Objects2d &objects);
+		void on_objects_circles(const msg::ObjectsCircles &objects_circles);
+		void on_image(const msg::CompressedImage::ConstSharedPtr &image);
 
 		visualization_msgs::msg::MarkerArray get_geofeature_markers();
 		visualization_msgs::msg::MarkerArray get_virtual_geofeature_markers();
-		visualization_msgs::msg::Marker get_path_marker(const msg::Path& p, std::string frame,
-							   							int id, float r, float g, float b);
+		visualization_msgs::msg::Marker get_path_marker(const msg::Path &p, std::string frame,
+														int id, float r, float g, float b);
 	};
 }
 

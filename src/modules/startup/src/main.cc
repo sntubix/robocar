@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #include "cycle/cycle.h"
 
@@ -24,7 +24,8 @@
 #include "simulation/sim_vehicle_component.h"
 #include "simulation/sim_objects_component.h"
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
 	auto qt_app = QApplication(argc, argv);
 
 	auto cycle = cycle::Cycle();

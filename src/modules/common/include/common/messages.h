@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef ROBOCAR_MESSAGES_H
 #define ROBOCAR_MESSAGES_H
@@ -32,7 +32,8 @@
 #include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
-namespace msg_interfaces::msg {
+namespace msg_interfaces::msg
+{
     typedef sensor_msgs::msg::PointCloud2 PointCloud;
     typedef sensor_msgs::msg::CompressedImage CompressedImage;
     typedef sensor_msgs::msg::Image Image;

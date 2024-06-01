@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #include "drivers/camera/camera_component.h"
 
@@ -9,22 +9,26 @@
 
 using namespace robocar::drivers::camera;
 
-CameraComponent::CameraComponent(const cycle::Params& params) : cycle::Service(params) {
+CameraComponent::CameraComponent(const cycle::Params &params) : cycle::Service(params)
+{
     // params
     _device_id = params.get("device_id").to_int();
     _width = params.get("width").to_int();
-    if (_width < 1) {
+    if (_width < 1)
+    {
         throw std::invalid_argument("'width' must be > 1");
     }
     _height = params.get("height").to_int();
-    if (_height < 1) {
+    if (_height < 1)
+    {
         throw std::invalid_argument("'height' must be > 1");
     }
     _flip = params.get("flip").to_bool();
 
     // open device
     _camera.open(_device_id, cv::CAP_V4L2);
-    if (!_camera.isOpened()) {
+    if (!_camera.isOpened())
+    {
         throw std::runtime_error("unable to open camera using id:" + std::to_string(_device_id));
     }
     _camera.set(cv::CAP_PROP_FRAME_WIDTH, _width);
@@ -34,10 +38,13 @@ CameraComponent::CameraComponent(const cycle::Params& params) : cycle::Service(p
     _pub_img = this->create_publisher<msg::CompressedImage>("sensors/camera/compressed", 1);
 }
 
-void CameraComponent::serve() {
+void CameraComponent::serve()
+{
     _camera.read(_cv_mat);
-    if (!_cv_mat.empty()) {
-        if (_flip) {
+    if (!_cv_mat.empty())
+    {
+        if (_flip)
+        {
             cv::flip(_cv_mat, _cv_mat, -1);
         }
 

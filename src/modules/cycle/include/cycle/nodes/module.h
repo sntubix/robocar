@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef CYCLE_MODULE_H
 #define CYCLE_MODULE_H
@@ -11,11 +11,14 @@
 #include "cycle/nodes/config.h"
 #include "cycle/utils/logging.h"
 
-namespace cycle {
-	class Module : public rclcpp::Node {
+namespace cycle
+{
+	class Module : public rclcpp::Node
+	{
 	public:
-		Module(const Params& params)
-			: rclcpp::Node(params.name(), rclcpp::NodeOptions().use_intra_process_comms(true)) {
+		Module(const Params &params)
+			: rclcpp::Node(params.name(), rclcpp::NodeOptions().use_intra_process_comms(true))
+		{
 			Logger::register_prefix(this, params.name());
 			_pub_cycle = this->create_publisher<std_msgs::msg::String>("cycle/listener", 1);
 		}
@@ -23,9 +26,10 @@ namespace cycle {
 		virtual ~Module() = default;
 
 	protected:
-		void msg_cycle(const std::string msg) {
+		void msg_cycle(const std::string msg)
+		{
 			std_msgs::msg::String r_msg;
-    		r_msg.data = msg;
+			r_msg.data = msg;
 			_pub_cycle->publish(r_msg);
 		}
 
@@ -34,4 +38,4 @@ namespace cycle {
 	};
 }
 
-#endif //CYCLE_MODULE_H
+#endif // CYCLE_MODULE_H

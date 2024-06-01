@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef VEHICLE_VEHICLE_COMPONENT_H
 #define VEHICLE_VEHICLE_COMPONENT_H
@@ -11,10 +11,12 @@
 
 #include "vehicle/ma_filters.h"
 
-namespace robocar::vehicle {
-	class VehicleComponent : public cycle::Service {
+namespace robocar::vehicle
+{
+	class VehicleComponent : public cycle::Service
+	{
 	public:
-		VehicleComponent(const cycle::Params& params);
+		VehicleComponent(const cycle::Params &params);
 
 		void serve() override;
 
@@ -68,14 +70,14 @@ namespace robocar::vehicle {
 		rclcpp::Subscription<msg::ActCmd>::SharedPtr _sub_control;
 
 		bool status_check();
-		void on_ad_toggle(const msg::AdToggle& ad_toggle);
-		void on_act_status(const msg::ActStatus& act_status);
-		void on_input(const msg::ActCmd& act_cmd);
-		void on_gnss(const msg::GNSS& gnss);
-		void on_point_cloud(const msg::PointCloud::ConstSharedPtr& pc);
-		void on_image(const msg::CompressedImage::ConstSharedPtr& img);
-		void on_planning(const msg::Planning& planning);
-		void on_control(const msg::ActCmd& act_cmd);
+		void on_ad_toggle(const msg::AdToggle &ad_toggle);
+		void on_act_status(const msg::ActStatus &act_status);
+		void on_input(const msg::ActCmd &act_cmd);
+		void on_gnss(const msg::GNSS &gnss);
+		void on_point_cloud(const msg::PointCloud::ConstSharedPtr &pc);
+		void on_image(const msg::CompressedImage::ConstSharedPtr &img);
+		void on_planning(const msg::Planning &planning);
+		void on_control(const msg::ActCmd &act_cmd);
 	};
 }
 

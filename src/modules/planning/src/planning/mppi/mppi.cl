@@ -1,15 +1,17 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
-float get_noise(uint* seed, float mean, float std) {
+float get_noise(uint *seed, float mean, float std)
+{
     uint r = *seed;
     float s = 0.0f;
     float u = 0.0f;
     float v = 0.0f;
 
-    while ((s == 0.0f) || (s >= 1.0f)) {
+    while ((s == 0.0f) || (s >= 1.0f))
+    {
         // LCG
         r = (1103515245 * r + 12345) & 0xffffffff;
         // set in [-1,1]
@@ -26,22 +28,25 @@ float get_noise(uint* seed, float mean, float std) {
     return mean + (u * sqrt((-2.0f * log(s)) / s)) * std;
 }
 
-float get_diff_angle(float a, float b) {
+float get_diff_angle(float a, float b)
+{
     const float PI = 3.1415927f;
     float diff = a - b;
-	if (diff > PI)
-		diff -= (2 * PI);
-	if (diff < -PI)
-		diff += (2 * PI);
-	return fabs(diff);
+    if (diff > PI)
+        diff -= (2 * PI);
+    if (diff < -PI)
+        diff += (2 * PI);
+    return fabs(diff);
 }
 
-float dir_obj_dist(float x, float y, float yaw, float obj_x, float obj_y, float obj_r) {
+float dir_obj_dist(float x, float y, float yaw, float obj_x, float obj_y, float obj_r)
+{
     // check object is in front
     float cos_theta = cos(yaw);
     float sin_theta = sin(yaw);
     float w_x = cos_theta * obj_x + sin_theta * obj_y - cos_theta * x - sin_theta * y;
-    if (w_x < -obj_r) {
+    if (w_x < -obj_r)
+    {
         return -1.0f;
     }
 
@@ -64,13 +69,14 @@ float get_obstacle_dist(float reaction_time,
                         float vehicle_y,
                         float vehicle_vel,
                         float x, float y, float yaw, float vel, float accel,
-                        __constant float* waypoints,
+                        __constant float *waypoints,
                         uint waypoints_size,
                         uint waypoint_dim,
                         uint offset_c_w,
-                        __constant float* objects,
+                        __constant float *objects,
                         uint objects_size,
-                        uint object_dim) {
+                        uint object_dim)
+{
     const uint nb_waypoints = waypoints_size / waypoint_dim;
     const uint nb_objects = objects_size / object_dim;
     const float cos_theta = cos(yaw);
@@ -80,48 +86,58 @@ float get_obstacle_dist(float reaction_time,
     float v_dx = x - vehicle_x;
     float v_dy = y - vehicle_y;
     float v_dist = sqrt(v_dx * v_dx + v_dy * v_dy);
-    if (v_dist < (vehicle_vel * reaction_time)) {
+    if (v_dist < (vehicle_vel * reaction_time))
+    {
         return -1.0f;
     }
 
     // check vehicle at stop velocity
-    if (vel <= stop_velocity) {
+    if (vel <= stop_velocity)
+    {
         return -1.0f;
     }
 
     // obstacles
     float min_obj_d = -1.0f;
     uint offset_o = 0;
-    for (uint i=0; i < nb_objects; i++) {
+    for (uint i = 0; i < nb_objects; i++)
+    {
         float obj_x = objects[offset_o];
-        float obj_y = objects[offset_o+1];
-        float obj_r = objects[offset_o+2];
+        float obj_y = objects[offset_o + 1];
+        float obj_r = objects[offset_o + 2];
 
         // check collision
         float dx = obj_x - x;
         float dy = obj_y - y;
         float obj_d = sqrt(dx * dx + dy * dy) - obj_r;
-        if (obj_d <= 0.0f) {
-            if ((obj_d < min_obj_d) || (min_obj_d == -1.0f)) {
+        if (obj_d <= 0.0f)
+        {
+            if ((obj_d < min_obj_d) || (min_obj_d == -1.0f))
+            {
                 min_obj_d = obj_d;
             }
         }
 
         // check collision using direction and velocity
         float dir_dist = dir_obj_dist(x, y, yaw, obj_x, obj_y, obj_r);
-        if ((dir_dist != -1.0f) && (dir_dist <= obj_r)) {
-            if ((obj_d < min_obj_d) || (min_obj_d == -1.0f)) {
+        if ((dir_dist != -1.0f) && (dir_dist <= obj_r))
+        {
+            if ((obj_d < min_obj_d) || (min_obj_d == -1.0f))
+            {
                 min_obj_d = obj_d;
             }
         }
 
         // check collision using waypoints
         uint offset_w = 0;
-        for (uint j=0; j < nb_waypoints; j++) {
+        for (uint j = 0; j < nb_waypoints; j++)
+        {
             dx = obj_x - waypoints[offset_w];
-            dy = obj_y - waypoints[offset_w+1];
-            if ((sqrt(dx * dx + dy * dy) - obj_r) <= 0.0f) {
-                if ((obj_d < min_obj_d) || (min_obj_d == -1.0f)) {
+            dy = obj_y - waypoints[offset_w + 1];
+            if ((sqrt(dx * dx + dy * dy) - obj_r) <= 0.0f)
+            {
+                if ((obj_d < min_obj_d) || (min_obj_d == -1.0f))
+                {
                     min_obj_d = obj_d;
                 }
             }
@@ -135,19 +151,20 @@ float get_obstacle_dist(float reaction_time,
 }
 
 __kernel void mppi(uint N,
-                   __constant float* params,
-                   __constant float* state,
-                   __constant float* waypoints,
+                   __constant float *params,
+                   __constant float *state,
+                   __constant float *waypoints,
                    uint waypoints_size,
                    uint waypoint_dim,
-                   __constant float* objects,
+                   __constant float *objects,
                    uint objects_size,
                    uint object_dim,
-                   __constant float* inputs,
+                   __constant float *inputs,
                    uint input_dim,
-                   __global uint* seed,
-                   __global float* noise,
-                   __global float* costs) {
+                   __global uint *seed,
+                   __global float *noise,
+                   __global float *costs)
+{
     // params
     const float delta = params[0];
     const float sigma_s = params[1];
@@ -178,7 +195,8 @@ __kernel void mppi(uint N,
     args_valid &= (object_dim >= 3);
     args_valid &= ((objects_size % object_dim) == 0);
     args_valid &= (input_dim >= 2);
-    if (!args_valid) {
+    if (!args_valid)
+    {
         return;
     }
 
@@ -206,76 +224,87 @@ __kernel void mppi(uint N,
     uint offset_w = 0;
     uint offset_c_w = 0;
     float v_min_dist = FLT_MAX;
-    for (uint i=0; i < nb_waypoints; i++) {
+    for (uint i = 0; i < nb_waypoints; i++)
+    {
         float dx = vehicle_x - waypoints[offset_w];
-        float dy = vehicle_y - waypoints[offset_w+1];
+        float dy = vehicle_y - waypoints[offset_w + 1];
         float dist = sqrt(dx * dx + dy * dy);
 
         // vehicle minimun distance
-        if (dist < v_min_dist) {
+        if (dist < v_min_dist)
+        {
             offset_c_w = offset_w;
             v_min_dist = dist;
         }
 
         offset_w += waypoint_dim;
     }
-    float cos_yaw = cos(waypoints[offset_c_w+2]);
-    float sin_yaw = sin(waypoints[offset_c_w+2]);
-    v_min_dist = fabs(-sin_yaw * vehicle_x + cos_yaw * vehicle_y
-                      + sin_yaw * waypoints[offset_c_w] - cos_yaw * waypoints[offset_c_w+1]);
+    float cos_yaw = cos(waypoints[offset_c_w + 2]);
+    float sin_yaw = sin(waypoints[offset_c_w + 2]);
+    v_min_dist = fabs(-sin_yaw * vehicle_x + cos_yaw * vehicle_y + sin_yaw * waypoints[offset_c_w] - cos_yaw * waypoints[offset_c_w + 1]);
 
     uint offset_n = global_id * input_dim;
     uint offset_i = 0;
-    for (uint i=0; i < N; i++) {
+    for (uint i = 0; i < N; i++)
+    {
         // get perturbations
         float n_steering_rate = get_noise(&_seed, 0.0f, sigma_s);
         float n_accel = get_noise(&_seed, 0.0f, sigma_a);
-        //float n_steering_rate = noise[offset_n];
-        //float n_accel = noise[offset_n+1];
+        // float n_steering_rate = noise[offset_n];
+        // float n_accel = noise[offset_n+1];
 
         // compute steering
         float steering_rate = inputs[offset_i] + n_steering_rate;
-        if ((steering + steering_rate * delta) > max_steering) {
+        if ((steering + steering_rate * delta) > max_steering)
+        {
             n_steering_rate = ((max_steering - steering) / delta) - inputs[offset_i];
             steering_rate = inputs[offset_i] + n_steering_rate;
         }
-        if ((steering + steering_rate * delta) < -max_steering) {
+        if ((steering + steering_rate * delta) < -max_steering)
+        {
             n_steering_rate = ((-max_steering - steering) / delta) - inputs[offset_i];
             steering_rate = inputs[offset_i] + n_steering_rate;
         }
         float _max_steering_rate = max_steering_rate;
-        if (steering_rate > _max_steering_rate) {
+        if (steering_rate > _max_steering_rate)
+        {
             steering_rate = _max_steering_rate;
             n_steering_rate = _max_steering_rate - inputs[offset_i];
         }
-        if (steering_rate < -_max_steering_rate) {
+        if (steering_rate < -_max_steering_rate)
+        {
             steering_rate = -_max_steering_rate;
             n_steering_rate = -_max_steering_rate - inputs[offset_i];
         }
         steering += steering_rate * delta;
 
         // compute acceleration
-        float accel = inputs[offset_i+1] + n_accel;
-        if ((vel + accel * delta) < 0.0f) {
+        float accel = inputs[offset_i + 1] + n_accel;
+        if ((vel + accel * delta) < 0.0f)
+        {
             accel = -vel / delta;
-            n_accel = accel - inputs[offset_i+1];
+            n_accel = accel - inputs[offset_i + 1];
         }
-        if (accel > max_accel) {
+        if (accel > max_accel)
+        {
             accel = max_accel;
-            n_accel = accel - inputs[offset_i+1];
+            n_accel = accel - inputs[offset_i + 1];
         }
-        if (accel < min_accel) {
+        if (accel < min_accel)
+        {
             accel = min_accel;
-            n_accel = accel - inputs[offset_i+1];
+            n_accel = accel - inputs[offset_i + 1];
         }
 
         // compute new position
         vel += accel * delta;
         yaw += (vel * tan(steering) / wheel_base) * delta;
-        if (yaw > 2.0f * M_PI_F) {
+        if (yaw > 2.0f * M_PI_F)
+        {
             yaw -= 2.0f * M_PI_F;
         }
-        if (yaw < -2.0f * M_PI_F) {
+        if (yaw < -2.0f * M_PI_F)
+        {
             yaw += 2.0f * M_PI_F;
         }
         x += cos(yaw) * vel * delta;
@@ -285,25 +314,27 @@ __kernel void mppi(uint N,
         uint offset_w = 0;
         uint offset_c_w = 0;
         float min_dist = FLT_MAX;
-        for (uint j=0; j < nb_waypoints; j++) {
+        for (uint j = 0; j < nb_waypoints; j++)
+        {
             float dx = x - waypoints[offset_w];
-            float dy = y - waypoints[offset_w+1];
+            float dy = y - waypoints[offset_w + 1];
             float dist = sqrt(dx * dx + dy * dy);
 
-            if (dist < min_dist) {
+            if (dist < min_dist)
+            {
                 offset_c_w = offset_w;
                 min_dist = dist;
             }
             offset_w += waypoint_dim;
         }
-        float cos_yaw = cos(waypoints[offset_c_w+2]);
-        float sin_yaw = sin(waypoints[offset_c_w+2]);
-        min_dist = -sin_yaw * x + cos_yaw * y
-                   + sin_yaw * waypoints[offset_c_w] - cos_yaw * waypoints[offset_c_w+1];
+        float cos_yaw = cos(waypoints[offset_c_w + 2]);
+        float sin_yaw = sin(waypoints[offset_c_w + 2]);
+        min_dist = -sin_yaw * x + cos_yaw * y + sin_yaw * waypoints[offset_c_w] - cos_yaw * waypoints[offset_c_w + 1];
 
         // check velocity doesn't exceed limit
-        float target_velocity = waypoints[offset_c_w+3];
-        if (vel > target_velocity) {
+        float target_velocity = waypoints[offset_c_w + 3];
+        if (vel > target_velocity)
+        {
             // step back
             x -= cos(yaw) * vel * delta;
             y -= sin(yaw) * vel * delta;
@@ -311,7 +342,7 @@ __kernel void mppi(uint N,
             vel -= accel * delta;
             // recompute velocity and perturbation
             accel = fmax((target_velocity - vel) / delta, min_accel);
-            n_accel = accel - inputs[offset_i+1];
+            n_accel = accel - inputs[offset_i + 1];
             // recompute new position
             vel += accel * delta;
             yaw += (vel * tan(steering) / wheel_base) * delta;
@@ -320,7 +351,7 @@ __kernel void mppi(uint N,
         }
 
         // waypoints alignment
-        float diff_yaw = get_diff_angle(yaw, waypoints[offset_c_w+2]);
+        float diff_yaw = get_diff_angle(yaw, waypoints[offset_c_w + 2]);
 
         // target speed difference
         float diff_v = fabs(vel - target_velocity);
@@ -328,7 +359,7 @@ __kernel void mppi(uint N,
         // target distance
         offset_w = waypoint_dim * (nb_waypoints - 1);
         float dx = x - waypoints[offset_w];
-        float dy = y - waypoints[offset_w+1];
+        float dy = y - waypoints[offset_w + 1];
         float target_dist = sqrt(dx * dx + dy * dy);
 
         // collision checker
@@ -344,9 +375,9 @@ __kernel void mppi(uint N,
         //     float v_r = vel;
         //     float v_f = 0.0f;
         //     float target_safe_dist = rss_min_dist + (v_r * rss_reaction_time)
-		// 	                         + (0.5f * rss_max_accel * rss_reaction_time * rss_reaction_time)
-		// 			                 + (pown(v_r + rss_reaction_time * rss_max_accel, 2) / (2 * rss_min_brake))
-		// 			                 - ((v_f * v_f) / (2 * rss_max_brake));
+        // 	                         + (0.5f * rss_max_accel * rss_reaction_time * rss_reaction_time)
+        // 			                 + (pown(v_r + rss_reaction_time * rss_max_accel, 2) / (2 * rss_min_brake))
+        // 			                 - ((v_f * v_f) / (2 * rss_max_brake));
         //     safe_dist = fmax((target_safe_dist - min_obj_d), 0.0f);
         // }
 
@@ -368,13 +399,13 @@ __kernel void mppi(uint N,
         float c_safe_dist = 25.0f * safe_dist * safe_dist;
         cost += c_min_dist + c_target + c_diff_yaw + c_diff_v + c_safe_dist;
 
-        //if ((get_global_id(0) % 64) == 0) {
-        //    printf("%u %f %f %f %f %f\n", i, c_min_dist, c_target, c_diff_yaw, c_diff_v, c_safe_dist);
-        //}
+        // if ((get_global_id(0) % 64) == 0) {
+        //     printf("%u %f %f %f %f %f\n", i, c_min_dist, c_target, c_diff_yaw, c_diff_v, c_safe_dist);
+        // }
 
         // iteration updates
         noise[offset_n] = n_steering_rate;
-        noise[offset_n+1] = n_accel;
+        noise[offset_n + 1] = n_accel;
         offset_n += K * input_dim;
         offset_i += input_dim;
         prev_target_dist = target_dist;

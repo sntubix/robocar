@@ -1,103 +1,122 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #include "logging/logging_component.h"
 
-namespace robocar {
-namespace logging {
+namespace robocar
+{
+	namespace logging
+	{
 
-LoggingComponent::LoggingComponent(const cycle::Params& params) : cycle::Service(params) {
-	// params
-	auto names = params.get("value_names").to_string();
-	std::string str = "";
-	for (int i=0; i < names.size(); i++) {
-		if (names[i] == ',') {
-			_names.push_back(str);
-			_values.insert({str, 0.0});
-			str = "";
+		LoggingComponent::LoggingComponent(const cycle::Params &params) : cycle::Service(params)
+		{
+			// params
+			auto names = params.get("value_names").to_string();
+			std::string str = "";
+			for (int i = 0; i < names.size(); i++)
+			{
+				if (names[i] == ',')
+				{
+					_names.push_back(str);
+					_values.insert({str, 0.0});
+					str = "";
+				}
+				else
+				{
+					str.push_back(names[i]);
+					if (i == (names.size() - 1))
+						_names.push_back(str);
+					_values.insert({str, 0.0});
+				}
+			}
+			int queue_size = params.get("queue_size").to_int();
+			if (queue_size <= 0)
+			{
+				throw std::invalid_argument("'queue_size' must be > 0");
+			}
+
+			// create log file
+			_file = std::fopen("log.csv", "w");
+			if (_file == NULL)
+				throw std::runtime_error("unable to create log file");
+			names = "timestamp,ad_engaged";
+			for (auto &name : _names)
+			{
+				names = names + "," + name;
+			}
+			names = names + "\n";
+			std::fwrite(names.c_str(), sizeof(char), names.size(), _file);
+			std::fflush(_file);
+
+			// subscribers
+			_sub_entry = this->create_subscription<msg::LogEntry>("logging/entry", queue_size,
+																  std::bind(&LoggingComponent::on_entry,
+																			this, std::placeholders::_1));
+			_sub_vehicle = this->create_subscription<msg::Vehicle>("vehicle/status", 1,
+																   std::bind(&LoggingComponent::on_vehicle,
+																			 this, std::placeholders::_1));
 		}
-		else {
-			str.push_back(names[i]);
-			if (i == (names.size() - 1))
-				_names.push_back(str);
-				_values.insert({str, 0.0});
+
+		LoggingComponent::~LoggingComponent()
+		{
+			std::fclose(_file);
 		}
-	}
-	int queue_size = params.get("queue_size").to_int();
-	if (queue_size <= 0) {
-		throw std::invalid_argument("'queue_size' must be > 0");
-	}
 
-	// create log file
-	_file = std::fopen("log.csv", "w");
-	if (_file == NULL)
-		throw std::runtime_error("unable to create log file");
-	names = "timestamp,ad_engaged";
-	for (auto& name : _names) {
-		names = names + "," + name;
-	}
-	names = names + "\n";
-	std::fwrite(names.c_str(), sizeof(char), names.size(), _file);
-	std::fflush(_file);
+		void LoggingComponent::serve()
+		{
+			if (_ad_engaged)
+			{
+				write_entry(false);
+			}
+		}
 
-	// subscribers
-	_sub_entry = this->create_subscription<msg::LogEntry>("logging/entry", queue_size,
-														  std::bind(&LoggingComponent::on_entry,
-														  			this, std::placeholders::_1));
-	_sub_vehicle = this->create_subscription<msg::Vehicle>("vehicle/status", 1,
-														   std::bind(&LoggingComponent::on_vehicle,
-														   			 this, std::placeholders::_1));
-}
+		void LoggingComponent::write_entry(bool flush)
+		{
+			std::unique_lock<std::mutex> lock(_mtx);
 
-LoggingComponent::~LoggingComponent() {
-	std::fclose(_file);
-}
+			std::string str = std::to_string(cycle::Time::now().ms()) + "," + std::to_string(_ad_engaged);
+			for (auto &name : _names)
+			{
+				str = str + "," + std::to_string(_values[name]);
+			}
+			str = str + "\n";
 
-void LoggingComponent::serve() {
-	if (_ad_engaged) {
-		write_entry(false);
-	}
-}
+			std::fwrite(str.c_str(), sizeof(char), str.size(), _file);
+			if (flush)
+			{
+				std::fflush(_file);
+			}
+		}
 
-void LoggingComponent::write_entry(bool flush) {
-	std::unique_lock<std::mutex> lock(_mtx);
+		void LoggingComponent::on_entry(const msg::LogEntry &entry)
+		{
+			std::unique_lock<std::mutex> lock(_mtx);
 
-	std::string str = std::to_string(cycle::Time::now().ms())
-					  + "," + std::to_string(_ad_engaged);
-	for (auto& name : _names) {
-		str = str + "," + std::to_string(_values[name]);
-	}
-	str = str + "\n";
+			if (entry.name.size() != entry.value.size())
+			{
+				throw std::runtime_error("invalid log entry");
+			}
 
-	std::fwrite(str.c_str(), sizeof(char), str.size(), _file);
-	if (flush) {
-		std::fflush(_file);
-	}
-}
+			for (int i = 0; i < entry.name.size(); i++)
+			{
+				_values[entry.name[i].data] = entry.value[i];
+			}
+		}
 
-void LoggingComponent::on_entry(const msg::LogEntry& entry) {
-	std::unique_lock<std::mutex> lock(_mtx);
+		void LoggingComponent::on_vehicle(const msg::Vehicle &vehicle)
+		{
+			if (_ad_engaged && !vehicle.ad_engaged)
+			{
+				_ad_engaged = vehicle.ad_engaged;
+				write_entry(true);
+			}
+			else
+			{
+				_ad_engaged = vehicle.ad_engaged;
+			}
+		}
 
-	if (entry.name.size() != entry.value.size()) {
-		throw std::runtime_error("invalid log entry");
-	}
-
-	for (int i=0; i < entry.name.size(); i++) {
-		_values[entry.name[i].data] = entry.value[i];
-	}
-}
-
-void LoggingComponent::on_vehicle(const msg::Vehicle& vehicle) {
-	if (_ad_engaged && !vehicle.ad_engaged) {
-		_ad_engaged = vehicle.ad_engaged;
-		write_entry(true);
-	}
-	else {
-		_ad_engaged = vehicle.ad_engaged;
-	}
-}
-
-}	// namespace logging
-}	// namespace robocar
+	} // namespace logging
+} // namespace robocar

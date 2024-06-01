@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #include "planning/mppi/mppi.h"
 
@@ -13,7 +13,8 @@
 using namespace mppi;
 namespace chrono = std::chrono;
 
-MPPI::MPPI(Params params) {
+MPPI::MPPI(Params params)
+{
     // params
     _p = params;
     _K = _p.local_size * _p.multiplier;
@@ -39,7 +40,8 @@ MPPI::MPPI(Params params) {
 
     // state
     _state = new float[_state_size];
-    for (int i=0; i < _state_size; i++) {
+    for (int i = 0; i < _state_size; i++)
+    {
         _state[i] = 0.0;
     }
 
@@ -47,14 +49,16 @@ MPPI::MPPI(Params params) {
     _rg_seed = std::mt19937(_rd());
     _dist_seed = std::uniform_int_distribution<uint32_t>(0, std::numeric_limits<uint32_t>::max());
     _seed = new uint32_t[_K];
-    for (int i=0; i < _K; i++) {
+    for (int i = 0; i < _K; i++)
+    {
         _seed[i] = _dist_seed(_rg_seed);
     }
 
     // inputs
     _inputs_size = _input_dim * _p.N;
     _inputs = new float[_inputs_size];
-    for (int i=0; i < _inputs_size; i++) {
+    for (int i = 0; i < _inputs_size; i++)
+    {
         _inputs[i] = 0.0;
     }
 
@@ -65,13 +69,15 @@ MPPI::MPPI(Params params) {
     //_dist_a = std::normal_distribution<float>(0.0, _p.sigma_a);
     _noise_size = _K * _inputs_size;
     _noise = new float[_noise_size];
-    for (int i=0; i < _noise_size; i++) {
+    for (int i = 0; i < _noise_size; i++)
+    {
         _noise[i] = 0.0;
     }
 
     // costs
     _costs = new float[_K];
-    for (int i=0; i < _K; i++) {
+    for (int i = 0; i < _K; i++)
+    {
         _costs[i] = 0.0;
     }
 
@@ -109,16 +115,18 @@ MPPI::MPPI(Params params) {
         throw std::runtime_error("unable to load OpenCL program: '" + _p.cl_file + "'");
     size_t size = str.size();
     auto source = new char[size];
-    for (int i=0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
         source[i] = str[i];
     }
 
     // build program and get kernel
-    _program = clCreateProgramWithSource(_context, 1, (const char**) &source, &size, &ret);
+    _program = clCreateProgramWithSource(_context, 1, (const char **)&source, &size, &ret);
     if (ret != CL_SUCCESS)
         throw std::runtime_error("unable to create OpenCL program");
     ret = clBuildProgram(_program, 1, &_device, NULL, NULL, NULL);
-    if (ret != CL_SUCCESS) {
+    if (ret != CL_SUCCESS)
+    {
         size_t log_size = 0;
         clGetProgramBuildInfo(_program, _device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
         std::string log;
@@ -158,30 +166,31 @@ MPPI::MPPI(Params params) {
         throw std::runtime_error("unable to create OpenCL buffer");
     // costs buffer
     __costs = clCreateBuffer(_context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
-                               _K * sizeof(cl_float), _costs, &ret);
+                             _K * sizeof(cl_float), _costs, &ret);
     if (ret != CL_SUCCESS)
         throw std::runtime_error("unable to create OpenCL buffer");
 
     // set kernel arguments
-    ret = clSetKernelArg(_kernel, 0, sizeof(cl_uint), (void*) &_p.N);
-    ret |= clSetKernelArg(_kernel, 1, sizeof(cl_mem), (void*) &__params);
-    ret |= clSetKernelArg(_kernel, 2, sizeof(cl_mem), (void*) &__state);
-    ret |= clSetKernelArg(_kernel, 5, sizeof(cl_uint), (void*) &_waypoint_dim);
-    ret |= clSetKernelArg(_kernel, 8, sizeof(cl_uint), (void*) &_object_dim);
-    ret |= clSetKernelArg(_kernel, 9, sizeof(cl_mem), (void*) &__inputs);
-    ret |= clSetKernelArg(_kernel, 10, sizeof(cl_uint), (void*) &_input_dim);
-    ret |= clSetKernelArg(_kernel, 11, sizeof(cl_mem), (void*) &__seed);
-    ret |= clSetKernelArg(_kernel, 12, sizeof(cl_mem), (void*) &__noise);
-    ret |= clSetKernelArg(_kernel, 13, sizeof(cl_mem), (void*) &__costs);
+    ret = clSetKernelArg(_kernel, 0, sizeof(cl_uint), (void *)&_p.N);
+    ret |= clSetKernelArg(_kernel, 1, sizeof(cl_mem), (void *)&__params);
+    ret |= clSetKernelArg(_kernel, 2, sizeof(cl_mem), (void *)&__state);
+    ret |= clSetKernelArg(_kernel, 5, sizeof(cl_uint), (void *)&_waypoint_dim);
+    ret |= clSetKernelArg(_kernel, 8, sizeof(cl_uint), (void *)&_object_dim);
+    ret |= clSetKernelArg(_kernel, 9, sizeof(cl_mem), (void *)&__inputs);
+    ret |= clSetKernelArg(_kernel, 10, sizeof(cl_uint), (void *)&_input_dim);
+    ret |= clSetKernelArg(_kernel, 11, sizeof(cl_mem), (void *)&__seed);
+    ret |= clSetKernelArg(_kernel, 12, sizeof(cl_mem), (void *)&__noise);
+    ret |= clSetKernelArg(_kernel, 13, sizeof(cl_mem), (void *)&__costs);
     if (ret != CL_SUCCESS)
         throw std::runtime_error("unable to set OpenCL kernel arguments");
 }
 
-std::vector<Waypoint> MPPI::run(const std::vector<float>& state,
+std::vector<Waypoint> MPPI::run(const std::vector<float> &state,
                                 std::vector<float> waypoints,
-                                std::vector<float> objects) {
-    //auto time = chrono::high_resolution_clock::now().time_since_epoch();
-    //uint64_t now = static_cast<uint64_t>(chrono::duration_cast<chrono::milliseconds>(time).count());
+                                std::vector<float> objects)
+{
+    // auto time = chrono::high_resolution_clock::now().time_since_epoch();
+    // uint64_t now = static_cast<uint64_t>(chrono::duration_cast<chrono::milliseconds>(time).count());
     cl_int ret;
 
     if (state.empty() || waypoints.empty())
@@ -240,14 +249,16 @@ std::vector<Waypoint> MPPI::run(const std::vector<float>& state,
     uint32_t _waypoints_size = waypoints.size();
 
     // update kernel arguments
-    ret |= clSetKernelArg(_kernel, 3, sizeof(cl_mem), (void*) &_waypoints);
-    ret |= clSetKernelArg(_kernel, 4, sizeof(cl_uint), (void*) &_waypoints_size);
+    ret |= clSetKernelArg(_kernel, 3, sizeof(cl_mem), (void *)&_waypoints);
+    ret |= clSetKernelArg(_kernel, 4, sizeof(cl_uint), (void *)&_waypoints_size);
     if (ret != CL_SUCCESS)
         throw std::runtime_error("unable to set OpenCL kernel arguments");
 
     // objects buffer
-    if (objects.empty()) {
-        for (size_t i=0; i < _object_dim; i++) {
+    if (objects.empty())
+    {
+        for (size_t i = 0; i < _object_dim; i++)
+        {
             objects.push_back(0.0);
         }
     }
@@ -258,14 +269,15 @@ std::vector<Waypoint> MPPI::run(const std::vector<float>& state,
     uint32_t _objects_size = objects.size();
 
     // update kernel arguments
-    ret |= clSetKernelArg(_kernel, 6, sizeof(cl_mem), (void*) &_objects);
-    ret |= clSetKernelArg(_kernel, 7, sizeof(cl_uint), (void*) &_objects_size);
+    ret |= clSetKernelArg(_kernel, 6, sizeof(cl_mem), (void *)&_objects);
+    ret |= clSetKernelArg(_kernel, 7, sizeof(cl_uint), (void *)&_objects_size);
     if (ret != CL_SUCCESS)
         throw std::runtime_error("unable to set OpenCL kernel arguments");
 
     // run kernel
     ret = clEnqueueNDRangeKernel(_queue, _kernel, 1, NULL, &_K, &_p.local_size, 0, NULL, NULL);
-    if (ret != CL_SUCCESS) {
+    if (ret != CL_SUCCESS)
+    {
         throw std::runtime_error("unable to enqueue OpenCL kernel");
     }
 
@@ -274,30 +286,36 @@ std::vector<Waypoint> MPPI::run(const std::vector<float>& state,
                               _noise_size * sizeof(cl_float), _noise, 0, NULL, NULL);
     ret |= clEnqueueReadBuffer(_queue, __costs, CL_TRUE, 0,
                                _K * sizeof(cl_float), _costs, 0, NULL, NULL);
-    if (ret != CL_SUCCESS) {
+    if (ret != CL_SUCCESS)
+    {
         throw std::runtime_error("unable to enqueue OpenCL read buffer");
     }
 
     // compute min cost
     double min_cost = std::numeric_limits<double>::max();
-    for (int i=0; i < _K; i++) {
+    for (int i = 0; i < _K; i++)
+    {
         if (_costs[i] < min_cost)
             min_cost = _costs[i];
     }
     // compute weights in double precision
     auto weights = std::vector<double>(_K);
-    for (int i=0; i < _K; i++) {
+    for (int i = 0; i < _K; i++)
+    {
         weights[i] = exp((-1.0 / _p.lambda) * (_costs[i] - min_cost));
     }
 
     // compute the sum of the weights
     double sum_weights = 0.0;
-    for (int i=0; i < _K; i++) {
+    for (int i = 0; i < _K; i++)
+    {
         sum_weights += weights[i];
     }
     // normalize the weights
-    if (sum_weights != 0.0) {
-        for (int i=0; i < _K; i++) {
+    if (sum_weights != 0.0)
+    {
+        for (int i = 0; i < _K; i++)
+        {
             weights[i] = weights[i] / sum_weights;
         }
     }
@@ -305,10 +323,12 @@ std::vector<Waypoint> MPPI::run(const std::vector<float>& state,
     // update nominal input
     size_t offset_i = 0;
     offset_n = 0;
-    for (int i=0; i < _p.N; i++) {
-        for (int j=0; j < _K; j++) {
+    for (int i = 0; i < _p.N; i++)
+    {
+        for (int j = 0; j < _K; j++)
+        {
             _inputs[offset_i] += weights[j] * _noise[offset_n];
-            _inputs[offset_i+1] += weights[j] * _noise[offset_n+1];
+            _inputs[offset_i + 1] += weights[j] * _noise[offset_n + 1];
             offset_n += _input_dim;
         }
         offset_i += _input_dim;
@@ -317,36 +337,41 @@ std::vector<Waypoint> MPPI::run(const std::vector<float>& state,
     // Savitzky–Golay filter on input
     std::vector<float> inputs(_inputs_size);
     offset_i = 0;
-    for (int i=0; i < _p.N; i++) {
-        for (int j=0; j < _input_dim; j++) {
+    for (int i = 0; i < _p.N; i++)
+    {
+        for (int j = 0; j < _input_dim; j++)
+        {
             double y_m_2 = 0.0;
-            if (i > 1) {
+            if (i > 1)
+            {
                 y_m_2 = _inputs[offset_i - (2 * _input_dim) + j];
             }
 
             double y_m_1 = 0.0;
-            if (i > 0) {
+            if (i > 0)
+            {
                 y_m_1 = _inputs[offset_i - (1 * _input_dim) + j];
             }
 
             double y_p_1 = 0.0;
-            if (i < (_p.N - 1)) {
+            if (i < (_p.N - 1))
+            {
                 y_p_1 = _inputs[offset_i + (1 * _input_dim) + j];
             }
 
             double y_p_2 = 0.0;
-            if (i < (_p.N - 2)) {
+            if (i < (_p.N - 2))
+            {
                 y_p_2 = _inputs[offset_i + (2 * _input_dim) + j];
             }
 
-            inputs[offset_i+j] = (1.0 / 35.0) * (-3.0 * y_m_2 + 12.0 * y_m_1
-                                                 + 17.0 * _inputs[offset_i+j]
-                                                 + 12.0 * y_p_1 - 3.0 * y_p_2);
+            inputs[offset_i + j] = (1.0 / 35.0) * (-3.0 * y_m_2 + 12.0 * y_m_1 + 17.0 * _inputs[offset_i + j] + 12.0 * y_p_1 - 3.0 * y_p_2);
         }
 
         offset_i += _input_dim;
     }
-    for (int i=0; i < _inputs_size; i++) {
+    for (int i = 0; i < _inputs_size; i++)
+    {
         _inputs[i] = inputs[i];
     }
 
@@ -359,17 +384,19 @@ std::vector<Waypoint> MPPI::run(const std::vector<float>& state,
     std::vector<Waypoint> trajectory;
     offset_i = 0;
     // compute trajectory from input sequence
-    for (int i=0; i < _p.N; i++) {
+    for (int i = 0; i < _p.N; i++)
+    {
         steering += _inputs[offset_i] * _p.delta;
-        vel = fmax(vel + (_inputs[offset_i+1] * _p.delta), 0.0);
+        vel = fmax(vel + (_inputs[offset_i + 1] * _p.delta), 0.0);
         yaw_rate = (vel * tan(steering) / _p.wheel_base);
         yaw += yaw_rate * _p.delta;
         x += cos(yaw) * vel * _p.delta;
         y += sin(yaw) * vel * _p.delta;
 
         // empty trajectory if no input update performed
-        if (sum_weights != 0.0) {
-            trajectory.push_back(Waypoint(x, y, yaw, yaw_rate, vel, _inputs[offset_i+1]));
+        if (sum_weights != 0.0)
+        {
+            trajectory.push_back(Waypoint(x, y, yaw, yaw_rate, vel, _inputs[offset_i + 1]));
         }
 
         offset_i += _input_dim;
@@ -377,17 +404,21 @@ std::vector<Waypoint> MPPI::run(const std::vector<float>& state,
 
     // shift nominal input
     _dt += state[5];
-    if (_dt >= _p.delta) {
+    if (_dt >= _p.delta)
+    {
         _dt = 0.0f;
         offset_i = 0;
-        for (int i=0; i < _p.N; i++) {
-            if (i == (_p.N - 1)) {
+        for (int i = 0; i < _p.N; i++)
+        {
+            if (i == (_p.N - 1))
+            {
                 //_inputs[offset_i] = 0.0f;
                 //_inputs[offset_i+1] = 0.0f;
             }
-            else {
-                _inputs[offset_i] = _inputs[offset_i+_input_dim];
-                _inputs[offset_i+1] = _inputs[offset_i+_input_dim+1];
+            else
+            {
+                _inputs[offset_i] = _inputs[offset_i + _input_dim];
+                _inputs[offset_i + 1] = _inputs[offset_i + _input_dim + 1];
             }
             offset_i += _input_dim;
         }

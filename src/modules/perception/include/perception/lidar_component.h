@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef PERCEPTION_LIDAR_COMPONENT_H
 #define PERCEPTION_LIDAR_COMPONENT_H
@@ -18,21 +18,23 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/features/moment_of_inertia_estimation.h>
 
-namespace robocar::perception::lidar {
-	class LidarComponent : public cycle::Service {
+namespace robocar::perception::lidar
+{
+	class LidarComponent : public cycle::Service
+	{
 	public:
-		LidarComponent(const cycle::Params& params);
+		LidarComponent(const cycle::Params &params);
 
 		void serve() override;
 
 	private:
 		// params
 		Eigen::Vector4f _roi_min_point;
-    	Eigen::Vector4f _roi_max_point;
+		Eigen::Vector4f _roi_max_point;
 		double _leaf_size = 0.05;
 		double _ec_tolerance = 0.35;
-    	int _ec_min_size = 5;
-    	int _ec_max_size = 2000;
+		int _ec_min_size = 5;
+		int _ec_max_size = 2000;
 		double _obj_min_height = 0.25;
 
 		pcl::CropBox<pcl::PointXYZI> _cb;

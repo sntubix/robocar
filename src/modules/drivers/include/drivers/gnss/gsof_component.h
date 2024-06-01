@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef DRIVERS_GNSS_GSOF_COMPONENT_H
 #define DRIVERS_GNSS_GSOF_COMPONENT_H
@@ -12,10 +12,12 @@
 #include <deque>
 #include <boost/asio.hpp>
 
-namespace robocar::drivers::gnss {
-	class GsofComponent : public cycle::Service {
+namespace robocar::drivers::gnss
+{
+	class GsofComponent : public cycle::Service
+	{
 	public:
-		GsofComponent(const cycle::Params& params);
+		GsofComponent(const cycle::Params &params);
 
 		void serve() override;
 
@@ -42,11 +44,11 @@ namespace robocar::drivers::gnss {
 		bool read_packet();
 		void read_record();
 
-		int16_t get_int16(uint8_t* data);
-		int32_t get_int32(uint8_t* data);
-		int64_t get_int64(uint8_t* data);
-		float get_float(uint8_t* data);
-		double get_double(uint8_t* data);
+		int16_t get_int16(uint8_t *data);
+		int32_t get_int32(uint8_t *data);
+		int64_t get_int64(uint8_t *data);
+		float get_float(uint8_t *data);
+		double get_double(uint8_t *data);
 
 		uint64_t gps_to_unix_time(uint16_t gps_week, uint32_t gps_time);
 	};

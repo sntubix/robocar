@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #ifndef DRIVERS_CAMERA_CAMERA_COMPONENT_H
 #define DRIVERS_CAMERA_CAMERA_COMPONENT_H
@@ -11,10 +11,12 @@
 
 #include <opencv2/opencv.hpp>
 
-namespace robocar::drivers::camera {
-	class CameraComponent : public cycle::Service {
+namespace robocar::drivers::camera
+{
+	class CameraComponent : public cycle::Service
+	{
 	public:
-		CameraComponent(const cycle::Params& params);
+		CameraComponent(const cycle::Params &params);
 
 		void serve() override;
 

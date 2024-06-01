@@ -1,7 +1,7 @@
 /*
  * MIT License
  * Copyright (c) 2024 University of Luxembourg
-*/
+ */
 
 #include "visualization/dashboard_component.h"
 #include "common/common.h"
@@ -13,11 +13,13 @@
 
 using namespace robocar::visualization;
 
-DashboardComponent::DashboardComponent(const cycle::Params& params, QApplication* qt_app, QWidget* parent)
-    : QWidget(parent), cycle::Module(params), _qt_app(qt_app) {
+DashboardComponent::DashboardComponent(const cycle::Params &params, QApplication *qt_app, QWidget *parent)
+    : QWidget(parent), cycle::Module(params), _qt_app(qt_app)
+{
     // params
     auto rviz_config = params.get("rviz_config").to_string();
-    if (!std::filesystem::exists(rviz_config)) {
+    if (!std::filesystem::exists(rviz_config))
+    {
         throw std::invalid_argument("invalid rviz configuration file: '" + rviz_config + "'");
     }
 
@@ -260,37 +262,44 @@ DashboardComponent::DashboardComponent(const cycle::Params& params, QApplication
     this->show();
 }
 
-void DashboardComponent::on_vehicle(const msg::Vehicle& vehicle) {
+void DashboardComponent::on_vehicle(const msg::Vehicle &vehicle)
+{
     _ad_engaged = vehicle.ad_engaged;
     emit vehicle_changed(vehicle.ad_engaged, vehicle.steering_status,
                          vehicle.throttle_status, vehicle.brake_status,
                          vehicle.gnss, vehicle.lidar, vehicle.camera);
 }
 
-void DashboardComponent::on_localization(const msg::Localization& loc) {
+void DashboardComponent::on_localization(const msg::Localization &loc)
+{
     emit position_changed(loc.x, loc.y, loc.yaw, loc.vel * 3.6);
 }
 
-void DashboardComponent::on_trajectory(const msg::Planning& trajectory) {
+void DashboardComponent::on_trajectory(const msg::Planning &trajectory)
+{
     emit planning_changed(trajectory.state, trajectory.target_velocity * 3.6,
                           trajectory.obstacle_type);
 }
 
-void DashboardComponent::on_traffic_light(const msg::Object3d& tfl) {
+void DashboardComponent::on_traffic_light(const msg::Object3d &tfl)
+{
     emit traffic_light_changed(tfl.type);
 }
 
-void DashboardComponent::on_act_cmd(const msg::ActCmd& act_cmd) {
+void DashboardComponent::on_act_cmd(const msg::ActCmd &act_cmd)
+{
     emit actuation_changed(act_cmd.steering * 180.0 / M_PI, act_cmd.throttle, act_cmd.brake);
 }
 
-void DashboardComponent::on_mapping_status(const msg::Mapping& mapping) {
+void DashboardComponent::on_mapping_status(const msg::Mapping &mapping)
+{
     _mapping = mapping.status;
     emit mapping_status_changed(mapping.status);
 }
 
 void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int throttle,
-                                            int brake, int gnss, int lidar, int camera) {
+                                            int brake, int gnss, int lidar, int camera)
+{
     if (_ad_engaged)
         _ad_status->setStyleSheet("font: 14pt; color: rgb(0, 255, 0)");
     else
@@ -301,69 +310,85 @@ void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int t
     v_error |= (steering == STATUS_ERROR) || (steering == STATUS_TIMEOUT);
     v_error |= (throttle == STATUS_ERROR) || (throttle == STATUS_TIMEOUT);
     v_error |= (brake == STATUS_ERROR) || (brake == STATUS_TIMEOUT);
-    if (v_error) {
+    if (v_error)
+    {
         _vehicle_status->setStyleSheet("color: rgb(255, 0, 0)");
         _vehicle_status->setText("ERROR");
     }
-    else {
+    else
+    {
         _vehicle_status->setStyleSheet("color: rgb(0, 255, 0)");
         _vehicle_status->setText("OK");
     }
 
     // localization
-    if (gnss == STATUS_OK) {
+    if (gnss == STATUS_OK)
+    {
         _localization_status->setStyleSheet("color: rgb(0, 255, 0)");
         _localization_status->setText("OK");
     }
-    else {
+    else
+    {
         _localization_status->setStyleSheet("color: rgb(255, 0, 0)");
         _localization_status->setText("ERROR");
     }
 
     // perception
-    if (lidar != STATUS_OK) {
+    if (lidar != STATUS_OK)
+    {
         _perception_status->setStyleSheet("color: rgb(255, 0, 0)");
         _perception_status->setText("ERROR");
     }
-    else if (camera != STATUS_OK) {
+    else if (camera != STATUS_OK)
+    {
         _perception_status->setStyleSheet("color: rgb(255, 0, 0)");
         _perception_status->setText("ERROR");
     }
-    else {
+    else
+    {
         _perception_status->setStyleSheet("color: rgb(0, 255, 0)");
         _perception_status->setText("OK");
     }
 }
 
-void DashboardComponent::on_mapping_status_changed(bool mapping) {
-    if (mapping) {
+void DashboardComponent::on_mapping_status_changed(bool mapping)
+{
+    if (mapping)
+    {
         _mapping_status->setStyleSheet("font: 14pt; color: rgb(0, 255, 0)");
     }
-    else {
+    else
+    {
         _mapping_status->setStyleSheet("font: 14pt; color: rgb(0, 0, 0)");
     }
 }
 
-void DashboardComponent::on_position_changed(double x, double y, double yaw, double speed) {
+void DashboardComponent::on_position_changed(double x, double y, double yaw, double speed)
+{
     _speed->setText(cycle::utils::round_str((speed), 0).c_str());
 }
 
-void DashboardComponent::on_planning_changed(int state, double target_speed, int obstacle_type) {
-    if (state == STATE_STANDBY) {
+void DashboardComponent::on_planning_changed(int state, double target_speed, int obstacle_type)
+{
+    if (state == STATE_STANDBY)
+    {
         _planning->setStyleSheet("font: 18pt; color: rgb(0, 255, 0)");
         _planning->setText("STANDBY");
     }
-    if (state == STATE_DRIVE) {
+    if (state == STATE_DRIVE)
+    {
         _planning->setStyleSheet("font: 18pt; color: rgb(0, 255, 255)");
         _planning->setText("DRIVE");
     }
-    if (state == STATE_KEEP_DIST) {
-        if ((obstacle_type == OBJ_TFL_RED) || (obstacle_type == OBJ_TFL_YELLOW)
-            || (obstacle_type == OBJ_TFL_NONE)) {
+    if (state == STATE_KEEP_DIST)
+    {
+        if ((obstacle_type == OBJ_TFL_RED) || (obstacle_type == OBJ_TFL_YELLOW) || (obstacle_type == OBJ_TFL_NONE))
+        {
             _planning->setStyleSheet("font: 18pt; color: rgb(255, 0, 0)");
             _planning->setText("STOP");
         }
-        else {
+        else
+        {
             _planning->setStyleSheet("font: 18pt; color: rgb(255, 127, 0)");
             _planning->setText("KEEP DIST");
         }
@@ -371,44 +396,53 @@ void DashboardComponent::on_planning_changed(int state, double target_speed, int
     _speed_limit->setText(cycle::utils::round_str((target_speed), 0).c_str());
 }
 
-void DashboardComponent::on_traffic_light_changed(int status) {
-    if (status == robocar::OBJ_NONE) {
+void DashboardComponent::on_traffic_light_changed(int status)
+{
+    if (status == robocar::OBJ_NONE)
+    {
         _green_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
         _yellow_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
         _red_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
     }
-    if (status == robocar::OBJ_TFL_NONE) {
+    if (status == robocar::OBJ_TFL_NONE)
+    {
         _green_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
         _yellow_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
         _red_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
     }
-    if (status == robocar::OBJ_TFL_GREEN) {
+    if (status == robocar::OBJ_TFL_GREEN)
+    {
         _green_light->setStyleSheet("font: 12pt; color: rgb(0, 255, 0)");
         _yellow_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
         _red_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
     }
-    if (status == robocar::OBJ_TFL_YELLOW) {
+    if (status == robocar::OBJ_TFL_YELLOW)
+    {
         _green_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
         _yellow_light->setStyleSheet("font: 12pt; color: rgb(255, 255, 0)");
         _red_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
     }
-    if (status == robocar::OBJ_TFL_RED) {
+    if (status == robocar::OBJ_TFL_RED)
+    {
         _green_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
         _yellow_light->setStyleSheet("font: 12pt; color: rgb(0, 0, 0)");
         _red_light->setStyleSheet("font: 12pt; color: rgb(255, 0, 0)");
     }
 }
 
-void DashboardComponent::on_actuation_changed(double steering, double throttle, double brake) {
+void DashboardComponent::on_actuation_changed(double steering, double throttle, double brake)
+{
     _steering->setText(cycle::utils::round_str(steering, 2).c_str());
     _throttle->setText(cycle::utils::round_str(throttle, 2).c_str());
     _brake->setText(cycle::utils::round_str(brake, 2).c_str());
 }
 
-void DashboardComponent::on_tfl_timer() {
+void DashboardComponent::on_tfl_timer()
+{
     std::unique_lock<std::mutex> lock(_m_tfl);
     _tfl_counter--;
-    if (_tfl_counter < 1) {
+    if (_tfl_counter < 1)
+    {
         msg::TrafficLight tfl;
         tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(cycle::Time::now().ms());
         tfl.type = OBJ_TFL_NONE;
@@ -416,16 +450,19 @@ void DashboardComponent::on_tfl_timer() {
     }
 }
 
-void DashboardComponent::closeEvent(QCloseEvent *event) {
+void DashboardComponent::closeEvent(QCloseEvent *event)
+{
     msg::AdToggle ad_toggle;
     ad_toggle.toggle = false;
     // disengage autonomous driving
-    while(_ad_engaged) {
+    while (_ad_engaged)
+    {
         _pub_ad_toggle->publish(ad_toggle);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     // stop mapping
-    while(_mapping) {
+    while (_mapping)
+    {
         msg::Mapping mapping;
         mapping.header.stamp = this->get_clock()->now();
         mapping.status = false;
@@ -434,5 +471,5 @@ void DashboardComponent::closeEvent(QCloseEvent *event) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     this->msg_cycle("shutdown");
-	event->accept();
+    event->accept();
 }
