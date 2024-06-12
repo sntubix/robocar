@@ -103,7 +103,7 @@ namespace robocar
             // init MPPI
             mppi::Params mppi_params;
             mppi_params.cl_file = params.get("cl_file").to_string();
-            mppi_params.platform_id = params.get("platform_id").to_int();
+            mppi_params.cl_platform_id = params.get("cl_platform_id").to_int();
             mppi_params.local_size = params.get("local_size").to_int();
             mppi_params.multiplier = params.get("multiplier").to_int();
             mppi_params.N = params.get("N").to_int();

@@ -2,7 +2,7 @@
     "cycle": {
         "global": {
             "period": 50,
-            "platform_id": 1,
+            "cl_platform_id": 1,
             "map": "src/modules/map/maps/kirchberg.geojson",
             "target_speed": 40.0,
             "vehicle_length": 4.14,
@@ -49,10 +49,10 @@
                 "steering_kp": 0.63,
                 "max_steering_kp": 5.2,
                 "max_steering": 0.57,
-                "velocity_kp_a": 0.35,
+                "velocity_kp_a": 0.40,
                 "velocity_kp_b": 0.25,
                 "velocity_ki_a": 0.002,
-                "velocity_ki_b": 0.008,
+                "velocity_ki_b": 0.009,
                 "velocity_ki_window": 40,
                 "velocity_kd_a": 0.02,
                 "velocity_kd_b": 0.04,

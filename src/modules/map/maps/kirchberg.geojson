@@ -2396,8 +2396,8 @@
             "geometry": {
                 "type": "Point",
                 "coordinates": [
-                    6.160760639363356,
-                    49.632168388279212
+                    6.16075887705084,
+                    49.632166354841686
                 ]
             }
         },
@@ -2413,8 +2413,8 @@
             "geometry": {
                 "type": "Point",
                 "coordinates": [
-                    6.160810377787798,
-                    49.632200748218004
+                    6.160811462287808,
+                    49.632198579217985
                 ]
             }
         },
@@ -2430,8 +2430,8 @@
             "geometry": {
                 "type": "Point",
                 "coordinates": [
-                    6.16085592140536,
-                    49.63223161001148
+                    6.160855379155355,
+                    49.632227272011441
                 ]
             }
         },
@@ -2447,8 +2447,8 @@
             "geometry": {
                 "type": "Point",
                 "coordinates": [
-                    6.160909854636683,
-                    49.632265468095589
+                    6.160910939136693,
+                    49.632262756845563
                 ]
             }
         },
@@ -2464,8 +2464,8 @@
             "geometry": {
                 "type": "Point",
                 "coordinates": [
-                    6.160959593061126,
-                    49.632296030260008
+                    6.160961762061145,
+                    49.632294403509995
                 ]
             }
         },
@@ -3462,7 +3462,8 @@
                 "latitude": 49.633418942,
                 "longitude": 6.164833575,
                 "heading": 100.81,
-                "speed": 6.882
+                "speed": 7.0,
+                "traffic_light": false
             },
             "geometry": {
                 "type": "Point",
@@ -3479,7 +3480,8 @@
                 "latitude": 49.633412305,
                 "longitude": 6.164883779,
                 "heading": 103.2,
-                "speed": 6.551
+                "speed": 7.0,
+                "traffic_light": false
             },
             "geometry": {
                 "type": "Point",
@@ -3496,7 +3498,8 @@
                 "latitude": 49.633405245,
                 "longitude": 6.164926855,
                 "heading": 105.77,
-                "speed": 6.5
+                "speed": 7.0,
+                "traffic_light": false
             },
             "geometry": {
                 "type": "Point",
@@ -3513,7 +3516,7 @@
                 "latitude": 49.63339651,
                 "longitude": 6.16497084,
                 "heading": 109.16,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3530,7 +3533,7 @@
                 "latitude": 49.633387759000001,
                 "longitude": 6.16500746,
                 "heading": 112.65,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3547,7 +3550,7 @@
                 "latitude": 49.633376959000003,
                 "longitude": 6.16504469,
                 "heading": 116.86,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3564,7 +3567,7 @@
                 "latitude": 49.633365972999997,
                 "longitude": 6.165076057,
                 "heading": 121.21,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3581,7 +3584,7 @@
                 "latitude": 49.633352381000002,
                 "longitude": 6.165107722,
                 "heading": 127.31,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3598,7 +3601,7 @@
                 "latitude": 49.633337656000002,
                 "longitude": 6.165134789,
                 "heading": 134.25,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3615,7 +3618,7 @@
                 "latitude": 49.633318224999996,
                 "longitude": 6.165162291,
                 "heading": 142.18,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3632,7 +3635,7 @@
                 "latitude": 49.633297614,
                 "longitude": 6.165184609,
                 "heading": 148.55,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3649,7 +3652,7 @@
                 "latitude": 49.633272782,
                 "longitude": 6.165206476,
                 "heading": 152.28,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3666,7 +3669,7 @@
                 "latitude": 49.633248768000001,
                 "longitude": 6.165225716,
                 "heading": 152.42,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3683,7 +3686,7 @@
                 "latitude": 49.633221861000003,
                 "longitude": 6.165248084,
                 "heading": 148.94,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3700,7 +3703,7 @@
                 "latitude": 49.633197776000003,
                 "longitude": 6.16527189,
                 "heading": 143.45,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3717,7 +3720,7 @@
                 "latitude": 49.633173028999998,
                 "longitude": 6.165302565,
                 "heading": 136.53,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3734,7 +3737,7 @@
                 "latitude": 49.633152815000003,
                 "longitude": 6.165334267,
                 "heading": 130.0,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3751,7 +3754,7 @@
                 "latitude": 49.633134038999998,
                 "longitude": 6.165372244,
                 "heading": 121.99,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3768,7 +3771,7 @@
                 "latitude": 49.633120728999998,
                 "longitude": 6.165409157,
                 "heading": 113.43,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3785,7 +3788,7 @@
                 "latitude": 49.633111262,
                 "longitude": 6.165447821,
                 "heading": 104.44,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3802,7 +3805,7 @@
                 "latitude": 49.633105788999998,
                 "longitude": 6.165491503,
                 "heading": 94.4,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3819,7 +3822,7 @@
                 "latitude": 49.633105199,
                 "longitude": 6.165531793,
                 "heading": 85.17,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3836,7 +3839,7 @@
                 "latitude": 49.633109378999997,
                 "longitude": 6.16557564,
                 "heading": 75.1,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3853,7 +3856,7 @@
                 "latitude": 49.633117368999997,
                 "longitude": 6.16561402,
                 "heading": 65.94,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3870,7 +3873,7 @@
                 "latitude": 49.63313076,
                 "longitude": 6.165653704,
                 "heading": 55.79,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3887,7 +3890,7 @@
                 "latitude": 49.63314686,
                 "longitude": 6.165686414,
                 "heading": 46.81,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3904,7 +3907,7 @@
                 "latitude": 49.633168335000001,
                 "longitude": 6.165717893,
                 "heading": 37.28,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3921,7 +3924,7 @@
                 "latitude": 49.633190743,
                 "longitude": 6.165741721,
                 "heading": 29.16,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3938,7 +3941,7 @@
                 "latitude": 49.633217745000003,
                 "longitude": 6.165762423,
                 "heading": 21.39,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3955,7 +3958,7 @@
                 "latitude": 49.633243909000001,
                 "longitude": 6.165776774,
                 "heading": 16.37,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3972,7 +3975,7 @@
                 "latitude": 49.633273621999997,
                 "longitude": 6.165789141,
                 "heading": 13.17,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -3989,7 +3992,7 @@
                 "latitude": 49.633300849000001,
                 "longitude": 6.165798712,
                 "heading": 12.43,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -4006,7 +4009,7 @@
                 "latitude": 49.633330451,
                 "longitude": 6.165808881,
                 "heading": 13.21,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -4023,7 +4026,7 @@
                 "latitude": 49.633359587999998,
                 "longitude": 6.165820226,
                 "heading": 16.29,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -4040,7 +4043,7 @@
                 "latitude": 49.633385597,
                 "longitude": 6.165832843,
                 "heading": 20.23,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -4057,7 +4060,7 @@
                 "latitude": 49.633411021000001,
                 "longitude": 6.165848232,
                 "heading": 23.78,
-                "speed": 6.5
+                "speed": 7.0
             },
             "geometry": {
                 "type": "Point",
@@ -10274,7 +10277,7 @@
                 "type": "Point",
                 "coordinates": [
                     6.158441153,
-                    49.633431147
+                    49.633439823000082
                 ]
             }
         },
@@ -10290,8 +10293,8 @@
             "geometry": {
                 "type": "Point",
                 "coordinates": [
-                    6.15848105,
-                    49.63342632
+                    6.158483219000019,
+                    49.633438249500102
                 ]
             }
         },
@@ -10308,7 +10311,7 @@
                 "type": "Point",
                 "coordinates": [
                     6.158525612,
-                    49.633420279
+                    49.63343329300011
                 ]
             }
         },
@@ -10324,8 +10327,8 @@
             "geometry": {
                 "type": "Point",
                 "coordinates": [
-                    6.158566087,
-                    49.633412174
+                    6.15856500249999,
+                    49.633426272500131
                 ]
             }
         },
@@ -10342,7 +10345,7 @@
                 "type": "Point",
                 "coordinates": [
                     6.158609851,
-                    49.633399417
+                    49.633411346500104
                 ]
             }
         },
@@ -10358,8 +10361,8 @@
             "geometry": {
                 "type": "Point",
                 "coordinates": [
-                    6.158648536,
-                    49.633384005
+                    6.158650705000019,
+                    49.633389427500049
                 ]
             }
         },

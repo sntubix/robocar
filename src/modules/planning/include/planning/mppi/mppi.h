@@ -16,7 +16,7 @@ namespace mppi
     typedef struct Params
     {
         std::string cl_file = "";
-        uint64_t platform_id = 0;
+        uint64_t cl_platform_id = 0;
         uint64_t local_size = 128;
         uint64_t multiplier = 15;
         uint64_t N = 12;

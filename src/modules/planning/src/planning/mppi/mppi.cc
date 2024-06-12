@@ -83,17 +83,17 @@ MPPI::MPPI(Params params)
 
     // get a platform
     cl_uint num_platforms = 0;
-    if (_p.platform_id > 10)
-        throw std::runtime_error("invalid platform_id: " + std::to_string(_p.platform_id));
-    _platforms = new cl_platform_id[_p.platform_id + 1];
-    cl_int ret = clGetPlatformIDs(_p.platform_id + 1, _platforms, &num_platforms);
+    if (_p.cl_platform_id > 10)
+        throw std::runtime_error("invalid cl_platform_id: " + std::to_string(_p.cl_platform_id));
+    _platforms = new cl_platform_id[_p.cl_platform_id + 1];
+    cl_int ret = clGetPlatformIDs(_p.cl_platform_id + 1, _platforms, &num_platforms);
     if (ret != CL_SUCCESS)
         throw std::runtime_error("unable to get OpenCL platforms");
-    if (num_platforms <= _p.platform_id)
-        throw std::runtime_error("unable to get OpenCL platform id: " + std::to_string(_p.platform_id));
+    if (num_platforms <= _p.cl_platform_id)
+        throw std::runtime_error("unable to get OpenCL platform id: " + std::to_string(_p.cl_platform_id));
 
     // get a GPU device
-    ret = clGetDeviceIDs(_platforms[_p.platform_id], CL_DEVICE_TYPE_GPU, 1, &_device, NULL);
+    ret = clGetDeviceIDs(_platforms[_p.cl_platform_id], CL_DEVICE_TYPE_GPU, 1, &_device, NULL);
     if (ret == CL_DEVICE_NOT_FOUND)
         throw std::runtime_error("unable to get an OpenCL device");
 
