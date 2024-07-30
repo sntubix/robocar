@@ -53,6 +53,11 @@ namespace robocar
 			{
 				throw std::invalid_argument("'velocity_kp_a' must be > 0.0");
 			}
+			_slope_factor = params.get("slope_factor").to_double();
+			if (_slope_factor <= 0.0)
+			{
+				throw std::invalid_argument("'slope_factor' must be > 0.0");
+			}
 			_velocity_kp_b = params.get("velocity_kp_b").to_double();
 			if (_velocity_kp_b <= 0.0)
 			{
@@ -202,6 +207,7 @@ namespace robocar
 			bool ad_engaged = _ad_engaged;
 			double curr_steering = _vehicle_steering;
 			uint64_t stamp = cycle::utils::ros_to_unix_ms_time(_loc.header.stamp);
+			double pitch = _loc.pitch;
 			double curr_theta = _loc.yaw;
 			double curr_vel = _loc.vel;
 			double target_velocity = _planning.target_velocity;
@@ -382,10 +388,16 @@ namespace robocar
 				}
 				_p_velocity_e = velocity_e;
 
+				// slope correction
+				double slope_corr = 0.0;
+				if (pitch > 0.0) {
+					slope_corr = pitch * _slope_factor;
+				}
+
 				// throttle PID
 				if (target_point.accel > 0.0)
 				{
-					throttle = (_velocity_kp_a * target_point.accel) + (_velocity_ki_a * _velocity_sum_e) + (_velocity_kd_a * velocity_dt_e);
+					throttle = (1.0 + slope_corr) * ((_velocity_kp_a * target_point.accel) + (_velocity_ki_a * _velocity_sum_e)) + (_velocity_kd_a * velocity_dt_e);
 				}
 				else
 				{

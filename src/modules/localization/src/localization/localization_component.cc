@@ -31,6 +31,9 @@ void LocalizationComponent::on_gnss(const msg::GNSS &gnss)
 	loc.x = pos.x();
 	loc.y = pos.y();
 
+	// pitch
+	loc.pitch = gnss.pitch * M_PI / 180.0;
+
 	// compute yaw
 	double yaw = (5 * M_PI / 2) - (gnss.heading * M_PI / 180.0);
 	if (yaw >= 2 * M_PI)

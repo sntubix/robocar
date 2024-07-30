@@ -33,6 +33,7 @@ namespace robocar
 			double _steering_kp = 0.63;
 			double _max_steering_kp = 4.5;
 			double _max_steering = 0.57;
+			double _slope_factor = 2.0;
 			double _velocity_kp_a = 0.2;
 			double _velocity_kp_b = 0.2;
 			double _velocity_ki_a = 0.01;

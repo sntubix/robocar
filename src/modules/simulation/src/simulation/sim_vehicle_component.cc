@@ -76,6 +76,7 @@ namespace robocar
 			_loc.header.frame_id = "map";
 			_loc.x = _x;
 			_loc.y = _y;
+			_loc.pitch = 0.0;
 			_loc.yaw = _yaw;
 			_loc.vel = _v;
 			_loc.accel = _accel;

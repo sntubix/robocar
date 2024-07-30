@@ -30,7 +30,7 @@ namespace robocar::visualization
         void vehicle_changed(bool ad_engaged, int steering, int throttle,
                              int brake, int gnss, int lidar, int camera);
         void mapping_status_changed(bool mapping);
-        void position_changed(double x, double y, double yaw, double speed);
+        void localization_changed(double x, double y, double pitch, double yaw, double speed);
         void planning_changed(int state, double target_speed, int obstacle_type);
         void traffic_light_changed(int status);
         void actuation_changed(double steering, double throttle, double brake);
@@ -39,7 +39,7 @@ namespace robocar::visualization
         void on_vehicle_changed(bool ad_engaged, int steering, int throttle,
                                 int brake, int gnss, int lidar, int camera);
         void on_mapping_status_changed(bool mapping);
-        void on_position_changed(double x, double y, double yaw, double speed);
+        void on_localization_changed(double x, double y, double pitch, double yaw, double speed);
         void on_planning_changed(int state, double target_speed, int obstacle_type);
         void on_traffic_light_changed(int status);
         void on_actuation_changed(double steering, double throttle, double brake);

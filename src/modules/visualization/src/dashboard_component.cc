@@ -179,7 +179,7 @@ DashboardComponent::DashboardComponent(const cycle::Params &params, QApplication
     _speed->setStyleSheet("font: 17pt; color: rgb(255, 255, 255)");
     _speed->setAlignment(Qt::AlignCenter);
     speed_panel->layout()->addWidget(_speed);
-    connect(this, &DashboardComponent::position_changed, this, &DashboardComponent::on_position_changed);
+    connect(this, &DashboardComponent::localization_changed, this, &DashboardComponent::on_localization_changed);
     // speed unit
     auto speed_unit = new QLabel("km/h", speed_panel);
     speed_unit->setStyleSheet("font: 9pt; color: rgb(255, 255, 255)");
@@ -272,7 +272,7 @@ void DashboardComponent::on_vehicle(const msg::Vehicle &vehicle)
 
 void DashboardComponent::on_localization(const msg::Localization &loc)
 {
-    emit position_changed(loc.x, loc.y, loc.yaw, loc.vel * 3.6);
+    emit localization_changed(loc.x, loc.y, loc.pitch, loc.yaw, loc.vel * 3.6);
 }
 
 void DashboardComponent::on_trajectory(const msg::Planning &trajectory)
@@ -363,7 +363,8 @@ void DashboardComponent::on_mapping_status_changed(bool mapping)
     }
 }
 
-void DashboardComponent::on_position_changed(double x, double y, double yaw, double speed)
+void DashboardComponent::on_localization_changed(double x, double y, double pitch,
+                                                 double yaw, double speed)
 {
     _speed->setText(cycle::utils::round_str((speed), 0).c_str());
 }

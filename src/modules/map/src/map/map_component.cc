@@ -46,7 +46,12 @@ namespace robocar
 			// init loc
 			_loc.x = 0.0;
 			_loc.y = 0.0;
+			_loc.pitch = 0.0;
 			_loc.yaw = 0.0;
+			_loc.vel = 0.0;
+			_loc.accel = 0.0;
+			_loc.sigma_x = 0.0;
+			_loc.sigma_y = 0.0;
 
 			// publishers
 			_pub_path_trace = this->create_publisher<msg::Path>("map/trace", 1);
