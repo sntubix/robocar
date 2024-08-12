@@ -29,16 +29,16 @@ Internal RoboCar nodes (components) are configured using a custom [`robocar.json
         "enable": true,
         "param_a": 10,
         "param_c": 0.25,
-        ...
+        "other_params": "..."
       }
     },
     "module_b": {
       "enable": false,
       "component_b": {
-        ...
+        "other_params": "..."
       },
       "component_c": {
-        ...
+        "other_params": "..."
       }
     }
   }
