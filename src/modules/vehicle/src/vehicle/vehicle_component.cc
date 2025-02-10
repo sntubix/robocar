@@ -11,44 +11,32 @@ using namespace robocar::vehicle;
 VehicleComponent::VehicleComponent(const cycle::Params &params) : cycle::Service(params)
 {
 	// params
-	_can_timeout = params.get("can_timeout").to_int();
-	_gnss_timeout = params.get("gnss_timeout").to_int();
-	_pc_timeout = params.get("lidar_timeout").to_int();
-	_camera_timeout = params.get("camera_timeout").to_int();
-	_planning_timeout = params.get("planning_timeout").to_int();
-	_steering_ratio = params.get("steering_ratio").to_double();
-	if (_steering_ratio <= 0.0)
+	_can_timeout = std::max(params.get("can_timeout").to_int(), 0);
+	_gnss_timeout = std::max(params.get("gnss_timeout").to_int(), 0);
+	_pc_timeout = std::max(params.get("lidar_timeout").to_int(), 0);
+	_camera_timeout = std::max(params.get("camera_timeout").to_int(), 0);
+	_planning_timeout = std::max(params.get("planning_timeout").to_int(), 0);
+	_input_timeout = std::max(params.get("input_timeout").to_int(), 0);
+	_act_smoothing = params.get("act_smoothing").to_double();
+	if ((_act_smoothing <= 0.0) || (_act_smoothing > 1.0))
 	{
-		throw std::invalid_argument("'steering_ratio' must be > 0.0");
+		throw std::invalid_argument("'act_smoothing' must belong to ]0.0, 1.0]");
 	}
-	_steering_speed = params.get("steering_speed").to_double();
-	if (_steering_speed <= 0.0)
+	_max_steering_speed = params.get("steering_safety_speed").to_double();
+	if (_max_steering_speed <= 0.0)
 	{
-		throw std::invalid_argument("'steering_speed' must be > 0.0");
+		throw std::invalid_argument("'steering_safety_speed' must be > 0.0");
+	}
+	int steering_safety_window = params.get("steering_safety_window").to_int();
+	if (steering_safety_window <= 0)
+	{
+		throw std::invalid_argument("'steering_safety_window' must be > 0.0");
 	}
 	_steering_safety_coef = params.get("steering_safety_coef").to_double();
 	if (_steering_safety_coef <= 0.0)
 	{
 		throw std::invalid_argument("'steering_safety_coef' must be > 0.0");
 	}
-	auto ma_steering_window = params.get("ma_steering_window").to_int();
-	if (ma_steering_window <= 0)
-	{
-		throw std::invalid_argument("'ma_steering_window' must be > 0");
-	}
-	_ma_steering.reset(new MA(ma_steering_window));
-	auto ma_throttle_window = params.get("ma_throttle_window").to_int();
-	if (ma_throttle_window <= 0)
-	{
-		throw std::invalid_argument("'ma_throttle_window' must be > 0");
-	}
-	_ma_throttle.reset(new MA(ma_throttle_window));
-	auto ma_brake_window = params.get("ma_brake_window").to_int();
-	if (ma_brake_window <= 0)
-	{
-		throw std::invalid_argument("'ma_brake_window' must be > 0");
-	}
-	_ma_brake.reset(new MA(ma_brake_window));
 	_max_gnss_uncertainty = params.get("gnss_uncertainty").to_double();
 	if (_max_gnss_uncertainty <= 0.0)
 	{
@@ -56,16 +44,21 @@ VehicleComponent::VehicleComponent(const cycle::Params &params) : cycle::Service
 	}
 
 	// init actuation
+	auto now = this->get_clock()->now();
+	_act_control.header.stamp = now;
+	_act_control.mode = ACT_OVERRIDE_NONE;
 	_act_control.steering = 0.0;
-	_act_control.steering_speed = 0.0;
 	_act_control.throttle = 0.0;
 	_act_control.brake = 0.0;
+	_act_input.header.stamp = now;
+	_act_input.mode = ACT_OVERRIDE_NONE;
 	_act_input.steering = 0.0;
 	_act_input.throttle = 0.0;
 	_act_input.brake = 0.0;
-	_min_steering_speed = (0.2 * _steering_speed * M_PI) / (180.0 * _steering_ratio);
-	_max_steering_speed = (1.1 * _steering_speed * M_PI) / (180.0 * _steering_ratio);
-	_steering_delta.resize(params.get("ma_steering_window").to_int());
+
+	// init steering safety
+	_min_steering_speed = (0.2 * _max_steering_speed);
+	_steering_delta.resize(steering_safety_window);
 	for (int i = 0; i < _steering_delta.size(); i++)
 	{
 		_steering_delta[i] = 0.0;
@@ -88,10 +81,12 @@ VehicleComponent::VehicleComponent(const cycle::Params &params) : cycle::Service
 	_sub_gnss = this->create_subscription<msg::GNSS>("sensors/gnss", 1,
 													 std::bind(&VehicleComponent::on_gnss,
 															   this, std::placeholders::_1));
-	_sub_pc = this->create_subscription<msg::PointCloud>("sensors/points", 1,
+	_sub_pc = this->create_subscription<msg::PointCloud>("sensors/points",
+														 rclcpp::SensorDataQoS().keep_last(1),
 														 std::bind(&VehicleComponent::on_point_cloud,
 																   this, std::placeholders::_1));
-	_sub_image = this->create_subscription<msg::CompressedImage>("sensors/camera/compressed", 1,
+	_sub_image = this->create_subscription<msg::CompressedImage>("sensors/camera/compressed",
+																 rclcpp::SensorDataQoS().keep_last(1),
 																 std::bind(&VehicleComponent::on_image,
 																		   this, std::placeholders::_1));
 	_sub_planning = this->create_subscription<msg::Planning>("planning/trajectory", 1,
@@ -104,64 +99,113 @@ VehicleComponent::VehicleComponent(const cycle::Params &params) : cycle::Service
 
 void VehicleComponent::serve()
 {
+	auto now = this->get_clock()->now();
+
 	msg::ActCmd act_cmd;
-	act_cmd.header.stamp = this->get_clock()->now();
+	act_cmd.header.stamp = now;
+	act_cmd.mode = ACT_OVERRIDE_NONE;
 	act_cmd.steering = 0.0;
-	act_cmd.steering_speed = _steering_speed;
 	act_cmd.throttle = 0.0;
 	act_cmd.brake = 0.0;
 
-	if (status_check())
+	if (status_check(now))
 	{
 		std::unique_lock<std::mutex> lock(_m_a);
-		act_cmd = _act_control;
 
-		// direct input override
-		if (_act_input.steering != 0.0)
-			act_cmd.steering = _act_input.steering;
-		if (_act_input.throttle != 0.0)
-			act_cmd.throttle = _act_input.throttle;
-		if (_act_input.brake != 0.0)
+		// init actuation from control
+		act_cmd.header.stamp = _act_control.header.stamp;
+		act_cmd.steering = _act_control.steering;
+		act_cmd.throttle = _act_control.throttle;
+		act_cmd.brake = _act_control.brake;
+
+		// partial actuation override
+		if (_act_input.mode == ACT_OVERRIDE_PARTIAL)
 		{
-			act_cmd.throttle = 0.0;
+			act_cmd.mode = ACT_OVERRIDE_PARTIAL;
+
+			if (_act_input.steering != 0.0)
+			{
+				act_cmd.steering = _act_input.steering;
+			}
+			if (_act_input.throttle != 0.0)
+			{
+				act_cmd.throttle = _act_input.throttle;
+				act_cmd.brake = 0.0;
+			}
+			if (_act_input.brake != 0.0)
+			{
+				act_cmd.brake = _act_input.brake;
+			}
+		}
+
+		// complete actuation override
+		if (_act_input.mode == ACT_OVERRIDE_FULL)
+		{
+			act_cmd.mode = ACT_OVERRIDE_FULL;
+			act_cmd.steering = _act_input.steering;
+			act_cmd.throttle = _act_input.throttle;
 			act_cmd.brake = _act_input.brake;
 		}
+
+		// brake override
+		if (act_cmd.brake >= 0.001)
+		{
+			act_cmd.throttle = 0.0;
+		}
+
 		lock.unlock();
 
-		// smooth actuation
-		if (act_cmd.brake > 0.0)
+		// check actuation bounds
+		if (act_cmd.throttle > 1.0)
 		{
-			_ma_brake->add(act_cmd.brake);
-			act_cmd.brake = _ma_brake->EMA_avg();
-			_ma_throttle->add(0.0);
-			act_cmd.throttle = _ma_throttle->EMA_avg();
+			act_cmd.throttle = 1.0;
 		}
-		else
+		if (act_cmd.throttle < 0.0)
 		{
-			_ma_brake->add(0.0);
-			act_cmd.brake = _ma_brake->EMA_avg();
-			_ma_throttle->add(act_cmd.throttle);
-			act_cmd.throttle = _ma_throttle->EMA_avg();
+			act_cmd.throttle = 0.0;
+		}
+		if (act_cmd.brake > 1.0)
+		{
+			act_cmd.brake = 1.0;
+		}
+		if (act_cmd.brake < 0.0)
+		{
+			act_cmd.brake = 0.0;
 		}
 
-		// steering
-		_ma_steering->add(act_cmd.steering);
-		act_cmd.steering = _ma_steering->EMA_avg();
-		act_cmd.steering = act_cmd.steering * _steering_ratio;
-		act_cmd.steering_speed = _steering_speed;
+		// smooth actuation
+		act_cmd.steering = (act_cmd.steering * _act_smoothing) + (_prev_act_steering * (1 - _act_smoothing));
+		act_cmd.throttle = (act_cmd.throttle * _act_smoothing) + (_prev_act_throttle * (1 - _act_smoothing));
+		act_cmd.brake = (act_cmd.brake * _act_smoothing) + (_prev_act_brake * (1 - _act_smoothing));
+
+		// filter out actuation values that are too small
+		if (act_cmd.throttle < 0.001)
+		{
+			act_cmd.throttle = 0.0;
+		}
+		if (act_cmd.brake < 0.001)
+		{
+			act_cmd.brake = 0.0;
+		}
 	}
 
 	_pub_act_cmd->publish(act_cmd);
+
+	_prev_act_steering = act_cmd.steering;
+	_prev_act_throttle = act_cmd.throttle;
+	_prev_act_brake = act_cmd.brake;
 }
 
-bool VehicleComponent::status_check()
+bool VehicleComponent::status_check(rclcpp::Time curr_time)
 {
 	std::vector<std::string> errors;
+	auto now = cycle::utils::ros_to_unix_ms_time(curr_time);
 
-	msg::Vehicle vehicle;
 	std::unique_lock<std::mutex> lock(_m_a);
+
 	// init vehicle status from actuator status
-	vehicle.header.stamp = this->get_clock()->now();
+	msg::Vehicle vehicle;
+	vehicle.header.stamp = curr_time;
 	vehicle.ad_engaged = _act_status.ad_engaged;
 	vehicle.steering_status_stamp = _act_status.steering_status_stamp;
 	vehicle.steering_status = _act_status.steering_status;
@@ -178,9 +222,15 @@ bool VehicleComponent::status_check()
 	vehicle.gnss = STATUS_OK;
 	vehicle.lidar = STATUS_OK;
 	vehicle.camera = STATUS_OK;
-	vehicle.steering = -vehicle.steering / _steering_ratio;
-	auto now = cycle::utils::ros_to_unix_ms_time(vehicle.header.stamp);
-	// release actuator mutex
+
+	// check input validity
+	auto input_stamp = cycle::utils::ros_to_unix_ms_time(_act_input.header.stamp);
+	if ((_input_timeout > 0) && ((now - input_stamp) > _input_timeout))
+	{
+		_act_input.mode = ACT_OVERRIDE_NONE;
+	}
+	auto override_mode = _act_input.mode;
+
 	lock.unlock();
 
 	// check actuator status
@@ -226,17 +276,28 @@ bool VehicleComponent::status_check()
 	// vehicle.brake_status = STATUS_TIMEOUT;
 	// errors.push_back("CAN brake timeout");
 	//}
+
 	// check GNSS stamp
-	if ((_gnss_timeout > 0) && ((now - _gnss_stamp) > _gnss_timeout))
+	if ((now - _gnss_stamp) > _gnss_timeout)
 	{
-		vehicle.gnss = STATUS_TIMEOUT;
-		errors.push_back("GNSS timeout");
+		if ((_gnss_timeout <= 0) || (override_mode == ACT_OVERRIDE_FULL)) {
+			vehicle.gnss = STATUS_WARNING;
+		}
+		else {
+			vehicle.gnss = STATUS_TIMEOUT;
+			errors.push_back("GNSS timeout");
+		}
 	}
 	// check LiDAR point cloud stamp
-	if ((_pc_timeout > 0) && ((now - _pc_stamp) > _pc_timeout))
+	if ((now - _pc_stamp) > _pc_timeout)
 	{
-		vehicle.lidar = STATUS_TIMEOUT;
-		errors.push_back("LiDAR timeout");
+		if ((_pc_timeout <= 0) || (override_mode == ACT_OVERRIDE_FULL)) {
+			vehicle.lidar = STATUS_WARNING;
+		}
+		else {
+			vehicle.lidar = STATUS_TIMEOUT;
+			errors.push_back("LiDAR timeout");
+		}
 	}
 	// check camera stamp
 	if ((_camera_timeout > 0) && ((now - _camera_stamp) > _camera_timeout))
@@ -260,25 +321,37 @@ bool VehicleComponent::status_check()
 	for (auto delta : _steering_delta)
 		steering_delta += std::abs(delta);
 	steering_delta = steering_delta / _steering_delta.size();
+
 	// check steering speed out of limit
 	double delta_limit = (-_steering_safety_coef * _velocity) + _max_steering_speed;
 	if (delta_limit < _min_steering_speed)
 		delta_limit = _min_steering_speed;
 	if (steering_delta > delta_limit)
 	{
-		vehicle.steering_status = STATUS_ERROR;
-		errors.push_back("steering speed out of limit");
+		if (override_mode == ACT_OVERRIDE_FULL) {
+			vehicle.steering_status = STATUS_WARNING;
+		}
+		else {
+			vehicle.steering_status = STATUS_ERROR;
+			errors.push_back("steering speed out of limit");
+		}
 	}
 
 	// check GNSS accuracy
 	if (_gnss_uncertainty > _max_gnss_uncertainty)
 	{
-		vehicle.gnss = STATUS_ERROR;
-		errors.push_back("inaccurate GNSS position");
+		if (override_mode == ACT_OVERRIDE_FULL) {
+			vehicle.gnss = STATUS_WARNING;
+		}
+		else {
+			vehicle.gnss = STATUS_ERROR;
+			errors.push_back("inaccurate GNSS position");
+		}
 	}
 
 	// check planning validity
-	if ((_planning_timeout > 0) && ((now - _planning_stamp) > _planning_timeout))
+	if ((_planning_timeout > 0) && ((now - _planning_stamp) > _planning_timeout)
+		&& (override_mode != ACT_OVERRIDE_FULL))
 	{
 		errors.push_back("planning validity timeout");
 	}
@@ -318,7 +391,6 @@ void VehicleComponent::on_input(const msg::ActCmd &act_cmd)
 {
 	std::unique_lock<std::mutex> lock(_m_a);
 	_act_input = act_cmd;
-	// std::cout << _act_input.steering << " " << _act_input.throttle << " " << _act_input.brake << std::endl;
 }
 
 void VehicleComponent::on_gnss(const msg::GNSS &gnss)

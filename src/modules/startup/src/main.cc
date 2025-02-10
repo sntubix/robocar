@@ -11,6 +11,7 @@
 #include "drivers/gnss/gsof_component.h"
 #include "drivers/joystick/joystick_component.h"
 #include "drivers/lidar/ouster_component.h"
+#include "drivers/tod/tod_component.h"
 #include "vehicle/vehicle_component.h"
 #include "control/control_component.h"
 #include "localization/localization_component.h"
@@ -35,6 +36,7 @@ int main(int argc, char **argv)
 	cycle.register_service<robocar::drivers::gnss::GsofComponent>("gsof_component");
 	cycle.register_service<robocar::drivers::joystick::JoystickComponent>("joystick_component");
 	cycle.register_service<robocar::drivers::lidar::OusterComponent>("ouster_component");
+	cycle.register_service<robocar::drivers::tod::TODComponent>("tod_component");
 	cycle.register_service<robocar::vehicle::VehicleComponent>("vehicle_component");
 	cycle.register_service<robocar::control::ControlComponent>("control_component");
 	cycle.register_module<robocar::localization::LocalizationComponent>("localization_component");
@@ -43,7 +45,7 @@ int main(int argc, char **argv)
 	cycle.register_service<robocar::perception::lidar::LidarComponent>("lidar_component");
 	cycle.register_service<robocar::planning::PlanningComponent>("planning_component");
 	cycle.register_service<robocar::visualization::VisualizationComponent>("visualization_component");
-	cycle.register_module<robocar::visualization::DashboardComponent>("dashboard_component", &qt_app);
+	cycle.register_service<robocar::visualization::DashboardComponent>("dashboard_component", &qt_app);
 	cycle.register_service<robocar::logging::LoggingComponent>("logging_component");
 	cycle.register_service<robocar::simulation::SimVehicleComponent>("sim_vehicle_component");
 	cycle.register_service<robocar::simulation::SimObjectsComponent>("sim_objects_component");

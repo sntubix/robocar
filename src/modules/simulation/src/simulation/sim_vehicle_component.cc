@@ -23,10 +23,15 @@ namespace robocar
 			{
 				throw std::invalid_argument("'wheel_base' must be > 0.0");
 			}
-			_steering_speed = params.get("steering_speed").to_double();
-			if (_steering_speed <= 0.0)
+			_max_steering = params.get("max_steering").to_double();
+			if (_max_steering <= 0.0)
 			{
-				throw std::invalid_argument("'steering_speed' must be > 0.0");
+				throw std::invalid_argument("'max_steering' must be > 0.0");
+			}
+			_max_steering_speed = params.get("max_steering_speed").to_double();
+			if (_max_steering_speed <= 0.0)
+			{
+				throw std::invalid_argument("'max_steering_speed' must be > 0.0");
 			}
 			_steering_kp = params.get("steering_kp").to_double();
 			if (_steering_kp <= 0.0)
@@ -47,24 +52,24 @@ namespace robocar
 			_y_init = params.get("y").to_double();
 			_yaw_init = params.get("yaw").to_double();
 
-			// init vehicle
-			_vehicle.header.stamp = rclcpp::Time(0);
-			_vehicle.ad_engaged = false;
-			_vehicle.steering_status_stamp = 0;
-			_vehicle.throttle_status_stamp = 0;
-			_vehicle.brake_status_stamp = 0;
-			_vehicle.steering_status = STATUS_DISABLED;
-			_vehicle.throttle_status = STATUS_DISABLED;
-			_vehicle.brake_status = STATUS_DISABLED;
-			_vehicle.steering_stamp = 0;
-			_vehicle.velocity_stamp = 0;
-			_vehicle.brake_stamp = 0;
-			_vehicle.steering = 0.0;
-			_vehicle.velocity = 0.0;
-			_vehicle.brake = 0.0;
-			_vehicle.gnss = STATUS_OK;
-			_vehicle.lidar = STATUS_OK;
-			_vehicle.camera = STATUS_OK;
+			auto now = this->get_clock()->now();
+			auto now_stamp = cycle::utils::ros_to_unix_ms_time(now);
+
+			// init actuator status
+			_act_status.header.stamp = now;
+			_act_status.ad_engaged = false;
+			_act_status.steering_status_stamp = now_stamp;
+			_act_status.steering_status = STATUS_DISABLED;
+			_act_status.steering_stamp = now_stamp;
+			_act_status.steering = 0.0;
+			_act_status.throttle_status_stamp = now_stamp;
+			_act_status.throttle_status = STATUS_DISABLED;
+			_act_status.velocity_stamp = now_stamp;
+			_act_status.velocity = 0.0;
+			_act_status.brake_status_stamp = now_stamp;
+			_act_status.brake_status = STATUS_DISABLED;
+			_act_status.brake_stamp = now_stamp;
+			_act_status.brake = 0.0;
 
 			// init position
 			_x = _x_init;
@@ -72,7 +77,7 @@ namespace robocar
 			_yaw = _yaw_init;
 			_v = 0.0;
 			_accel = 0.0;
-			_loc.header.stamp = rclcpp::Time(0);
+			_loc.header.stamp = now;
 			_loc.header.frame_id = "map";
 			_loc.x = _x;
 			_loc.y = _y;
@@ -84,15 +89,14 @@ namespace robocar
 			_loc.sigma_y = 0.0;
 
 			// publishers
-			_pub_vehicle = this->create_publisher<msg::Vehicle>("vehicle/status", 1);
+			_pub_act_status = this->create_publisher<msg::ActStatus>("actuator/status", 1);
 			_pub_loc = this->create_publisher<msg::Localization>("localization/position", 1);
-			_pub_act_cmd = this->create_publisher<msg::ActCmd>("actuator/command", 1);
 			// subscribers
-			_sub_ad_toggle = this->create_subscription<msg::AdToggle>("vehicle/ad_toggle", 1,
-																	  std::bind(&SimVehicleComponent::on_ad_toggle,
-																				this, std::placeholders::_1));
-			_sub_control = this->create_subscription<msg::ActCmd>("vehicle/control", 1,
-																  std::bind(&SimVehicleComponent::on_control,
+			_sub_act_toggle = this->create_subscription<msg::ActToggle>("actuator/toggle", 1,
+																		std::bind(&SimVehicleComponent::on_act_toggle,
+																				  this, std::placeholders::_1));
+			_sub_act_cmd = this->create_subscription<msg::ActCmd>("actuator/command", 1,
+																  std::bind(&SimVehicleComponent::on_act_cmd,
 																			this, std::placeholders::_1));
 		}
 
@@ -100,8 +104,10 @@ namespace robocar
 		{
 			std::unique_lock<std::mutex> lock(_mtx);
 
-			if (_vehicle.ad_engaged)
+			if (_act_status.ad_engaged)
 			{
+				//TODO add proper vehicle model
+
 				// update speed
 				if (_act_cmd.throttle > 0.0)
 				{
@@ -118,15 +124,24 @@ namespace robocar
 				}
 
 				// update steering
-				double steering_e = std::abs(_act_cmd.steering - _steering);
-				double steering_speed = std::min(steering_e * _steering_kp, _steering_speed);
-				if (_act_cmd.steering > _steering)
+				double steering_e = _act_cmd.steering - _steering;
+				double steering_speed = std::min(std::abs(steering_e) * _steering_kp,
+												 _max_steering_speed);
+				if (steering_e > 0.0)
 				{
 					_steering += steering_speed * _delta;
 				}
 				else
 				{
 					_steering -= steering_speed * _delta;
+				}
+				if (_steering > _max_steering)
+				{
+					_steering = _max_steering;
+				}
+				if (_steering < -_max_steering)
+				{
+					_steering = -_max_steering;
 				}
 
 				// update position
@@ -135,58 +150,58 @@ namespace robocar
 				_y += std::sin(_yaw) * _v * _delta;
 			}
 
-			// publish vehicle
-			auto now = cycle::Time::now().ms();
-			_vehicle.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
-			_vehicle.steering_status_stamp = now;
-			_vehicle.throttle_status_stamp = now;
-			_vehicle.brake_status_stamp = now;
-			_vehicle.steering_stamp = now;
-			_vehicle.velocity_stamp = now;
-			_vehicle.brake_stamp = now;
-			_vehicle.steering = _steering;
-			_vehicle.velocity = _v;
-			_pub_vehicle->publish(_vehicle);
+			auto now = this->get_clock()->now();
+			auto now_stamp = cycle::utils::ros_to_unix_ms_time(now);
+
+			// publish actuator status
+			_act_status.header.stamp = now;
+			_act_status.steering_status_stamp = now_stamp;
+			_act_status.throttle_status_stamp = now_stamp;
+			_act_status.brake_status_stamp = now_stamp;
+			_act_status.steering_stamp = now_stamp;
+			_act_status.velocity_stamp = now_stamp;
+			_act_status.brake_stamp = now_stamp;
+			_act_status.steering = _steering;
+			_act_status.velocity = _v;
+			_act_status.brake = _act_cmd.brake;
+			_pub_act_status->publish(_act_status);
 
 			// publish localization
-			_loc.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
+			_loc.header.stamp = now;
 			_loc.x = _x;
 			_loc.y = _y;
 			_loc.yaw = _yaw;
 			_loc.vel = _v;
 			_loc.accel = _accel;
 			_pub_loc->publish(_loc);
-
-			// publish applied actuation command
-			_pub_act_cmd->publish(_act_cmd);
 		}
 
-		void SimVehicleComponent::on_ad_toggle(const msg::AdToggle &ad_toggle)
+		void SimVehicleComponent::on_act_toggle(const msg::ActToggle &act_toggle)
 		{
 			_mtx.lock();
-			if (!_vehicle.ad_engaged)
+			if ((!_act_status.ad_engaged) && (act_toggle.toggle))
 			{
 				_x = _x_init;
 				_y = _y_init;
 				_yaw = _yaw_init;
-				_vehicle.ad_engaged = true;
-				_vehicle.steering_status = STATUS_ENABLED;
-				_vehicle.throttle_status = STATUS_ENABLED;
-				_vehicle.brake_status = STATUS_ENABLED;
+				_act_status.ad_engaged = true;
+				_act_status.steering_status = STATUS_ENABLED;
+				_act_status.throttle_status = STATUS_ENABLED;
+				_act_status.brake_status = STATUS_ENABLED;
 			}
-			else
+			if (!act_toggle.toggle)
 			{
 				_v = 0.0;
 				_accel = 0.0;
-				_vehicle.ad_engaged = false;
-				_vehicle.steering_status = STATUS_DISABLED;
-				_vehicle.throttle_status = STATUS_DISABLED;
-				_vehicle.brake_status = STATUS_DISABLED;
+				_act_status.ad_engaged = false;
+				_act_status.steering_status = STATUS_DISABLED;
+				_act_status.throttle_status = STATUS_DISABLED;
+				_act_status.brake_status = STATUS_DISABLED;
 			}
 			_mtx.unlock();
 		}
 
-		void SimVehicleComponent::on_control(const msg::ActCmd &act_cmd)
+		void SimVehicleComponent::on_act_cmd(const msg::ActCmd &act_cmd)
 		{
 			_mtx.lock();
 			_act_cmd = act_cmd;

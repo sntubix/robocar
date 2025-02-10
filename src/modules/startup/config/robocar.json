@@ -97,12 +97,11 @@
                 "lidar_timeout": 1000,
                 "camera_timeout": 500,
                 "planning_timeout": 500,
-                "steering_ratio": 15.7,
-                "steering_speed": 320.0,
-                "steering_safety_coef": 0.021,
-                "ma_steering_window": 5,
-                "ma_throttle_window": 5,
-                "ma_brake_window": 5
+                "input_timeout": 1000,
+                "act_smoothing": 0.33,
+                "steering_safety_speed": 0.389,
+                "steering_safety_window": 5,
+                "steering_safety_coef": 0.021
             }
         },
         "drivers": {
@@ -110,7 +109,9 @@
             "actuator_component": {
                 "enable": true,
                 "period": 25,
-                "can_dev": "can0"
+                "can_dev": "can0",
+                "steering_ratio": 15.7,
+                "steering_speed": 0.356
             },
             "alexa_component": {
                 "enable": false,
@@ -119,10 +120,10 @@
             },
             "camera_component": {
                 "enable": true,
-                "period": 40,
+                "period": 30,
                 "device_id": 4,
-                "width": 1600,
-                "height": 900,
+                "width": 800,
+                "height": 450,
                 "flip": true
             },
             "joystick_component": {
@@ -148,13 +149,22 @@
                 "tf_y": -0.01,
                 "tf_z": 1.53,
                 "tf_theta": -1.5
+            },
+            "tod_component": {
+                "enable": true,
+                "period": 35,
+                "max_steering": 0.57,
+                "max_throttle": 0.6,
+                "max_brake": 0.4
             }
         },
         "simulation": {
             "enable": false,
             "sim_vehicle_component": {
                 "enable": true,
-                "steering_speed": 0.3557,
+                "period": 25,
+                "max_steering": 0.57,
+                "max_steering_speed": 0.356,
                 "steering_kp": 0.8,
                 "min_accel": -9.2,
                 "max_accel": 2.52,
@@ -216,10 +226,10 @@
         "visualization": {
             "enable": true,
             "visualization_component": {
-				"vehicle_mesh": "src/modules/visualization/mesh/low_poly_car.fbx",
+                "vehicle_mesh": "src/modules/visualization/mesh/low_poly_car.fbx",
                 "map_geofeatures": "src/modules/map/maps/belval_geofeatures.geojson",
                 "map_virtual_geofeatures": "src/modules/map/maps/belval_virtual_geofeatures.geojson"
-			},
+            },
             "dashboard_component": {
                 "rviz_config": "src/modules/visualization/config/visualization.rviz"
             }

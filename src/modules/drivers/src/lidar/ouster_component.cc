@@ -59,7 +59,8 @@ OusterComponent::OusterComponent(const cycle::Params &params) : cycle::Service(p
         0.0, 0.0, 0.0, 1.0;
 
     // publisher
-    _pub_pc = this->create_publisher<msg::PointCloud>("sensors/points", 1);
+    _pub_pc = this->create_publisher<msg::PointCloud>("sensors/points",
+                                                      rclcpp::SensorDataQoS().keep_last(1));
 
     // connect to lidar
     LOG_INFO("connecting sensor at '" + _src_ip + "'..");

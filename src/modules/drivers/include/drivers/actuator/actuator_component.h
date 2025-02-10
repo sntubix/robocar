@@ -22,11 +22,8 @@ namespace robocar::drivers::actuator
 	private:
 		// params
 		std::string _can_dev = "can0";
-
-		bool is_engaged();
-		bool publish_steering_angle(double angle, double velocity);
-		bool publish_throttle_position(double throttle);
-		bool publish_brake_position(double brake);
+		double _steering_ratio = 15.7;
+		double _steering_speed = 320.0;
 
 		void on_act_toggle(const msg::ActToggle &act_toggle);
 		void on_act_cmd(const msg::ActCmd &act_cmd);

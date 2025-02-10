@@ -12,9 +12,9 @@ find_package(cv_bridge REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
+find_library(ZeroMQ zmq REQUIRED)
 find_package(PkgConfig)
 pkg_check_modules(libserial libserial REQUIRED)
-pkg_check_modules(libgps libgps REQUIRED)
 
 include_directories(
     include
@@ -27,10 +27,11 @@ add_library(${PROJECT_NAME}
     src/gnss/gsof_component.cc
     src/joystick/joystick_component.cc
     src/lidar/ouster_component.cc
+    src/tod/tod_component.cc
 )
 target_link_libraries(${PROJECT_NAME}
     ${libserial_LIBRARIES}
-    ${libgps_LIBRARIES}
+    zmq
 )
 
 install(
@@ -68,6 +69,5 @@ ament_export_dependencies(
 )
 ament_export_include_directories(
     ${libserial_INCLUDE_DIRS}
-    ${libgps_INCLUDE_DIRS}
 )
 ament_package()

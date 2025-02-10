@@ -29,13 +29,16 @@ CameraComponent::CameraComponent(const cycle::Params &params) : cycle::Service(p
     _camera.open(_device_id, cv::CAP_V4L2);
     if (!_camera.isOpened())
     {
-        throw std::runtime_error("unable to open camera using id:" + std::to_string(_device_id));
+        throw std::runtime_error("unable to open camera using id: " + std::to_string(_device_id));
     }
     _camera.set(cv::CAP_PROP_FRAME_WIDTH, _width);
     _camera.set(cv::CAP_PROP_FRAME_HEIGHT, _height);
 
-    // publisher
-    _pub_img = this->create_publisher<msg::CompressedImage>("sensors/camera/compressed", 1);
+    // publishers
+    _pub_img = this->create_publisher<msg::Image>("sensors/camera",
+                                                  rclcpp::SensorDataQoS().keep_last(1));
+    _pub_c_img = this->create_publisher<msg::CompressedImage>("sensors/camera/compressed",
+                                                              rclcpp::SensorDataQoS().keep_last(1));
 }
 
 void CameraComponent::serve()
@@ -43,18 +46,23 @@ void CameraComponent::serve()
     _camera.read(_cv_mat);
     if (!_cv_mat.empty())
     {
+        auto now = this->get_clock()->now();
+
         if (_flip)
         {
             cv::flip(_cv_mat, _cv_mat, -1);
         }
 
-        // convert to ROS msg
+        // header
         std_msgs::msg::Header header;
-        header.stamp = this->get_clock()->now();
+        header.stamp = now;
         header.frame_id = "vehicle";
-        auto img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, _cv_mat);
-        auto img = img_bridge.toCompressedImageMsg();
 
-        _pub_img->publish(*img);
+        auto img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, _cv_mat);
+
+        // publish image
+        _pub_img->publish(*img_bridge.toImageMsg());
+        // publish compressed image
+        _pub_c_img->publish(*img_bridge.toCompressedImageMsg());
     }
 }

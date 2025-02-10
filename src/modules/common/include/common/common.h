@@ -30,6 +30,10 @@ namespace robocar
     const int OBJ_TFL_GREEN = 4;
     const int OBJ_TFL_YELLOW = 5;
     const int OBJ_TFL_RED = 6;
+    // actuation override mode
+    const int ACT_OVERRIDE_NONE = 0;
+    const int ACT_OVERRIDE_PARTIAL = 1;
+    const int ACT_OVERRIDE_FULL = 2;
 }
 
 #endif // ROBOCAR_COMMON_H

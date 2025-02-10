@@ -38,7 +38,8 @@ VisualizationComponent::VisualizationComponent(const cycle::Params &params) : cy
     _pub_target = this->create_publisher<visualization_msgs::msg::Marker>("viz/control/target", 1);
     _pub_objects3d = this->create_publisher<visualization_msgs::msg::MarkerArray>("viz/perception/lidar/objects3d", 2);
     _pub_objects_circles = this->create_publisher<visualization_msgs::msg::MarkerArray>("viz/planning/objects_circles", 2);
-    _pub_image = this->create_publisher<msg::Image>("viz/perception/camera/objects2d", 1);
+    _pub_image = this->create_publisher<msg::Image>("viz/perception/camera/objects2d",
+                                                    rclcpp::SensorDataQoS().keep_last(1));
 
     // subscribers
     _sub_loc = this->create_subscription<msg::Localization>("localization/position", 1,
@@ -65,7 +66,8 @@ VisualizationComponent::VisualizationComponent(const cycle::Params &params) : cy
     _sub_objects_circles = this->create_subscription<msg::ObjectsCircles>("planning/objects_circles", 1,
                                                                           std::bind(&VisualizationComponent::on_objects_circles,
                                                                                     this, std::placeholders::_1));
-    _sub_image = this->create_subscription<msg::CompressedImage>("sensors/camera/compressed", 1,
+    _sub_image = this->create_subscription<msg::CompressedImage>("sensors/camera/compressed",
+                                                                 rclcpp::SensorDataQoS().keep_last(1),
                                                                  std::bind(&VisualizationComponent::on_image,
                                                                            this, std::placeholders::_1));
 

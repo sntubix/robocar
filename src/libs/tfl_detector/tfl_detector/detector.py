@@ -3,13 +3,14 @@
 # Copyright (c) 2024 University of Luxembourg, MIT License
 
 import sys
-import rclpy
-from rclpy.node import Node
 import numpy as np
-from sensor_msgs.msg import CompressedImage
-from msg_interfaces.msg import Object2d, Objects2d
 from ultralytics import YOLO
 import cv2
+
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import CompressedImage
+from msg_interfaces.msg import Object2d, Objects2d
 
 
 class Detector(Node):
@@ -18,10 +19,18 @@ class Detector(Node):
         self.conf = 0.25
         self.nms_iou = 0.7
         self.model = YOLO(model_path)
+
+        self._pub_objects = self.create_publisher(Objects2d, "perception/camera/objects2d", 1)
+
+        qos_profile = rclpy.qos.QoSProfile(
+            reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT,
+            history=rclpy.qos.HistoryPolicy.KEEP_LAST,
+            depth=1,
+            durability=rclpy.qos.DurabilityPolicy.VOLATILE
+        )
         self._sub_image = self.create_subscription(CompressedImage,
                                                    "sensors/camera/compressed",
-                                                   self.on_frame, 1)
-        self._pub_objects = self.create_publisher(Objects2d, "perception/camera/objects2d", 1)
+                                                   self.on_frame, qos_profile)
 
     def on_frame(self, frame: CompressedImage):
         img = np.frombuffer(frame.data, np.uint8)

@@ -20,11 +20,13 @@
 
 namespace robocar::visualization
 {
-    class DashboardComponent : public QWidget, public cycle::Module
+    class DashboardComponent : public QWidget, public cycle::Service
     {
         Q_OBJECT
     public:
         explicit DashboardComponent(const cycle::Params &params, QApplication *qt_app, QWidget *parent = 0);
+
+        void serve() override;
 
     signals:
         void vehicle_changed(bool ad_engaged, int steering, int throttle,
@@ -33,7 +35,7 @@ namespace robocar::visualization
         void localization_changed(double x, double y, double pitch, double yaw, double speed);
         void planning_changed(int state, double target_speed, int obstacle_type);
         void traffic_light_changed(int status);
-        void actuation_changed(double steering, double throttle, double brake);
+        void actuation_changed(int mode, double steering, double throttle, double brake);
 
     public slots:
         void on_vehicle_changed(bool ad_engaged, int steering, int throttle,
@@ -42,16 +44,17 @@ namespace robocar::visualization
         void on_localization_changed(double x, double y, double pitch, double yaw, double speed);
         void on_planning_changed(int state, double target_speed, int obstacle_type);
         void on_traffic_light_changed(int status);
-        void on_actuation_changed(double steering, double throttle, double brake);
+        void on_actuation_changed(int mode, double steering, double throttle, double brake);
 
     private:
         bool _ad_engaged = false;
         bool _mapping = false;
 
         // input actuation
-        double _steering_input = 0.0;
-        double _throttle_input = 0.0;
-        double _brake_input = 0.0;
+        std::mutex _m_ai;
+        msg::ActCmd _act_input;
+        int _prev_act_mode = ACT_OVERRIDE_NONE;
+        int _nb_inputs = 0;
 
         // input tfl
         std::mutex _m_tfl;
@@ -77,6 +80,10 @@ namespace robocar::visualization
         QLabel *_steering;
         QLabel *_throttle;
         QLabel *_brake;
+        // override panel
+        QLabel *_override_none;
+        QLabel *_override_partial;
+        QLabel *_override_full;
 
         // publishers
         rclcpp::Publisher<msg::AdToggle>::SharedPtr _pub_ad_toggle;
@@ -101,47 +108,44 @@ namespace robocar::visualization
 
         void keyPressEvent(QKeyEvent *event) override
         {
-            auto now = cycle::Time::now().ms();
+            auto now = this->get_clock()->now();
 
             if (!event->isAutoRepeat())
             {
-                bool input = false;
+                std::unique_lock<std::mutex> lock_ai(_m_ai);
                 if (event->key() == Qt::Key_A)
                 {
-                    input = true;
-                    _steering_input = 0.05;
+                    _act_input.steering = 0.05;
+                    _nb_inputs++;
                 }
                 if (event->key() == Qt::Key_D)
                 {
-                    input = true;
-                    _steering_input = -0.05;
+                    _act_input.steering = -0.05;
+                    _nb_inputs++;
                 }
                 if (event->key() == Qt::Key_W)
                 {
-                    input = true;
-                    _throttle_input = 0.25;
+                    _act_input.throttle = 0.25;
+                    _nb_inputs++;
                 }
                 if (event->key() == Qt::Key_Space)
                 {
-                    input = true;
-                    _brake_input = 0.4;
+                    _act_input.brake = 0.4;
+                    _nb_inputs++;
                 }
 
-                if (input)
+                if (_nb_inputs > 0)
                 {
-                    msg::ActCmd act_cmd;
-                    act_cmd.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
-                    act_cmd.steering = _steering_input;
-                    act_cmd.throttle = _throttle_input;
-                    act_cmd.brake = _brake_input;
-                    _pub_input->publish(act_cmd);
+                    _act_input.header.stamp = now;
+                    _act_input.mode = ACT_OVERRIDE_PARTIAL;
                 }
+                lock_ai.unlock();
             }
         }
 
         void keyReleaseEvent(QKeyEvent *event) override
         {
-            auto now = cycle::Time::now().ms();
+            auto now = this->get_clock()->now();
 
             if (!event->isAutoRepeat())
             {
@@ -178,7 +182,7 @@ namespace robocar::visualization
 
                         if (ret && !text.isEmpty())
                         {
-                            mapping.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
+                            mapping.header.stamp = now;
                             mapping.status = true;
                             mapping.filename.data = text.toStdString();
                             _pub_mapping_toggle->publish(mapping);
@@ -186,82 +190,80 @@ namespace robocar::visualization
                     }
                     else
                     {
-                        mapping.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
+                        mapping.header.stamp = now;
                         mapping.status = false;
                         mapping.filename.data = "";
                         _pub_mapping_toggle->publish(mapping);
                     }
                 }
 
-                bool input = false;
+                std::unique_lock<std::mutex> lock_ai(_m_ai);
                 if (event->key() == Qt::Key_A)
                 {
-                    input = true;
-                    _steering_input = 0.0;
+                    _act_input.steering = 0.0;
+                    _nb_inputs--;
                 }
                 if (event->key() == Qt::Key_D)
                 {
-                    input = true;
-                    _steering_input = 0.0;
+                    _act_input.steering = 0.0;
+                    _nb_inputs--;
                 }
                 if (event->key() == Qt::Key_W)
                 {
-                    input = true;
-                    _throttle_input = 0.0;
+                    _act_input.throttle = 0.0;
+                    _nb_inputs--;
                 }
                 if (event->key() == Qt::Key_Space)
                 {
-                    input = true;
-                    _brake_input = 0.0;
+                    _act_input.brake = 0.0;
+                    _nb_inputs--;
                 }
 
-                if (input)
+                if (_nb_inputs == 0)
                 {
-                    msg::ActCmd act_cmd;
-                    act_cmd.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
-                    act_cmd.steering = _steering_input;
-                    act_cmd.throttle = _throttle_input;
-                    act_cmd.brake = _brake_input;
-                    _pub_input->publish(act_cmd);
+                    _act_input.header.stamp = now;
+                    _act_input.mode = ACT_OVERRIDE_NONE;
                 }
+                lock_ai.unlock();
 
-                std::unique_lock<std::mutex> lock(_m_tfl);
+                std::unique_lock<std::mutex> lock_tfl(_m_tfl);
                 if (event->key() == Qt::Key_T)
                 {
                     msg::TrafficLight tfl;
-                    tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
+                    tfl.header.stamp = now;
                     tfl.type = OBJ_TFL_NONE;
                     _pub_tfl->publish(tfl);
                     _tfl_counter++;
-                    QTimer::singleShot(5000, this, &DashboardComponent::on_tfl_timer);
+                    QTimer::singleShot(10000, this, &DashboardComponent::on_tfl_timer);
                 }
                 if (event->key() == Qt::Key_G)
                 {
                     msg::TrafficLight tfl;
-                    tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
+                    tfl.header.stamp = now;
                     tfl.type = OBJ_TFL_GREEN;
                     _pub_tfl->publish(tfl);
                     _tfl_counter++;
-                    QTimer::singleShot(5000, this, &DashboardComponent::on_tfl_timer);
+                    QTimer::singleShot(10000, this, &DashboardComponent::on_tfl_timer);
                 }
                 if (event->key() == Qt::Key_Y)
                 {
                     msg::TrafficLight tfl;
-                    tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
+                    tfl.header.stamp = now;
                     tfl.type = OBJ_TFL_YELLOW;
                     _pub_tfl->publish(tfl);
                     _tfl_counter++;
-                    QTimer::singleShot(5000, this, &DashboardComponent::on_tfl_timer);
+                    QTimer::singleShot(10000, this, &DashboardComponent::on_tfl_timer);
                 }
                 if (event->key() == Qt::Key_R)
                 {
                     msg::TrafficLight tfl;
-                    tfl.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
+                    tfl.header.stamp = now;
                     tfl.type = OBJ_TFL_RED;
                     _pub_tfl->publish(tfl);
                     _tfl_counter++;
-                    QTimer::singleShot(5000, this, &DashboardComponent::on_tfl_timer);
+                    QTimer::singleShot(10000, this, &DashboardComponent::on_tfl_timer);
                 }
+                lock_tfl.unlock();
             }
         }
 

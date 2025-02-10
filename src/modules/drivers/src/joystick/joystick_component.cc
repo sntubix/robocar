@@ -133,10 +133,6 @@ namespace robocar::drivers::joystick
             throw std::invalid_argument("'steering_pow' must be > 0.0");
         }
 
-        _act.steering = 0.0;
-        _act.throttle = 0.0;
-        _act.brake = 0.0;
-
         int ret = JOYSTICK_ERROR;
 
         if (joystick == NULL)
@@ -404,22 +400,28 @@ namespace robocar::drivers::joystick
     {
         if (joystick_update() == JOYSTICK_OK)
         {
+            msg::ActCmd act;
+            act.header.stamp = this->get_clock()->now();
+            act.mode = _prev_act_mode;
+
             // ad toggle
             if (joystick_get_button(JOYSTICK_BUTTON_ENABLE_CONTROLS) == JOYSTICK_BUTTON_STATE_PRESSED)
             {
+                act.mode = ACT_OVERRIDE_FULL;
+
                 msg::AdToggle ad_toggle;
                 ad_toggle.toggle = true;
                 _pub_ad_toggle->publish(ad_toggle);
             }
             if (joystick_get_button(JOYSTICK_BUTTON_DISABLE_CONTROLS) == JOYSTICK_BUTTON_STATE_PRESSED)
             {
+                act.mode = ACT_OVERRIDE_NONE;
+
                 msg::AdToggle ad_toggle;
                 ad_toggle.toggle = false;
                 _pub_ad_toggle->publish(ad_toggle);
             }
 
-            msg::ActCmd act;
-            act.header.stamp = cycle::utils::unix_ms_to_ros_time(cycle::Time::now().ms());
             // steering
             double steering = get_normalized_position(JOYSTICK_AXIS_STEER);
             if (steering < 0.0)
@@ -435,12 +437,12 @@ namespace robocar::drivers::joystick
                 act.throttle = 0.0;
 
             // publish actuation
-            if ((act.steering != _act.steering) || (act.throttle != _act.throttle) || (act.brake != _act.brake))
+            if ((act.mode == ACT_OVERRIDE_FULL) || (_prev_act_mode == ACT_OVERRIDE_FULL))
             {
-                _act = act;
-                _pub_input->publish(_act);
+                _pub_input->publish(act);
             }
-            // std::cout << "steering: " << _act.steering() << ", throttle: " << _act.throttle() << ", brake: " << _act.brake() << std::endl;
+
+            _prev_act_mode = act.mode;
         }
     }
 

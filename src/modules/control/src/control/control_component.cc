@@ -228,6 +228,7 @@ namespace robocar
 			// init actuation
 			msg::ActCmd act;
 			act.header.stamp = cycle::utils::unix_ms_to_ros_time(stamp);
+			act.mode = ACT_OVERRIDE_NONE;
 			act.steering = 0.0;
 			act.throttle = 0.0;
 			act.brake = 0.0;
@@ -390,7 +391,8 @@ namespace robocar
 
 				// slope correction
 				double slope_corr = 0.0;
-				if (pitch > 0.0) {
+				if (pitch > 0.0)
+				{
 					slope_corr = pitch * _slope_factor;
 				}
 

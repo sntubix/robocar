@@ -82,7 +82,8 @@ LidarComponent::LidarComponent(const cycle::Params &params) : cycle::Service(par
 	_pub_non_ground = this->create_publisher<msg::PointCloud>("perception/lidar/non_ground", 1);
 	_pub_objects3d = this->create_publisher<msg::Objects3d>("perception/lidar/objects3d", 1);
 	// subscriber
-	_sub_point_cloud = this->create_subscription<msg::PointCloud>("sensors/points", 1,
+	_sub_point_cloud = this->create_subscription<msg::PointCloud>("sensors/points",
+																  rclcpp::SensorDataQoS().keep_last(1),
 																  std::bind(&LidarComponent::on_point_cloud,
 																			this, std::placeholders::_1));
 }

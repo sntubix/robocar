@@ -33,7 +33,6 @@ namespace robocar::drivers::alexa
 		rclcpp::Publisher<msg::AdToggle>::SharedPtr _pub_ad_toggle;
 		rclcpp::Publisher<msg::TargetSpeed>::SharedPtr _pub_target_speed;
 	};
-
 }
 
 #endif // DRIVERS_ALEXA_COMPONENT_H

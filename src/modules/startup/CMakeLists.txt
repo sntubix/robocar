@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(startup)
+project(startup) #TODO rename to robocar_startup (update doc)
 
 set(CMAKE_CXX_STANDARD 17)
 

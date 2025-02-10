@@ -30,8 +30,9 @@ namespace robocar::drivers::camera
 		cv::VideoCapture _camera;
 		cv::Mat _cv_mat;
 
-		// publisher
-		rclcpp::Publisher<msg::CompressedImage>::SharedPtr _pub_img;
+		// publishers
+		rclcpp::Publisher<msg::Image>::SharedPtr _pub_img;
+		rclcpp::Publisher<msg::CompressedImage>::SharedPtr _pub_c_img;
 	};
 }
 

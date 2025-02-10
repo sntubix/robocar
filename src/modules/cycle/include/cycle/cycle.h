@@ -50,6 +50,15 @@ namespace cycle
             _s_cons_map.insert({name, s_cons});
         }
 
+        template <typename T, typename N>
+        void register_service(const std::string name, N arg)
+        {
+            auto s_cons = std::function(
+                [arg](const Params &params)
+                { return std::shared_ptr<Service>{new T(params, arg)}; });
+            _s_cons_map.insert({name, s_cons});
+        }
+
         void init(int argc, char **argv)
         {
             if (argc < 2)
@@ -71,7 +80,7 @@ namespace cycle
             _executor->add_node(_node_listener);
 
             auto cfg = Config(argc, argv, argv[1]);
-            for (auto name : cfg.get_services())
+            for (auto name : cfg.get_components())
             {
                 if ((_m_cons_map.count(name) == 1))
                 {

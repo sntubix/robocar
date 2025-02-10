@@ -14,7 +14,7 @@
 using namespace robocar::visualization;
 
 DashboardComponent::DashboardComponent(const cycle::Params &params, QApplication *qt_app, QWidget *parent)
-    : QWidget(parent), cycle::Module(params), _qt_app(qt_app)
+    : QWidget(parent), cycle::Service(params), _qt_app(qt_app)
 {
     // params
     auto rviz_config = params.get("rviz_config").to_string();
@@ -22,6 +22,13 @@ DashboardComponent::DashboardComponent(const cycle::Params &params, QApplication
     {
         throw std::invalid_argument("invalid rviz configuration file: '" + rviz_config + "'");
     }
+
+    // init actuation input
+    _act_input.header.stamp = this->get_clock()->now();
+    _act_input.mode = ACT_OVERRIDE_NONE;
+    _act_input.steering = 0.0;
+    _act_input.throttle = 0.0;
+    _act_input.brake = 0.0;
 
     // publishers
     _pub_ad_toggle = this->create_publisher<msg::AdToggle>("vehicle/ad_toggle", 1);
@@ -214,14 +221,19 @@ DashboardComponent::DashboardComponent(const cycle::Params &params, QApplication
 
     // actuation panel
     auto actuation_panel = new QWidget(dash_panel);
-    actuation_panel->setLayout(new QHBoxLayout(actuation_panel));
+    actuation_panel->setLayout(new QVBoxLayout(actuation_panel));
     dash_layout->addWidget(actuation_panel, 33);
     connect(this, &DashboardComponent::actuation_changed, this, &DashboardComponent::on_actuation_changed);
 
+    // command panel
+    auto command_panel = new QWidget(actuation_panel);
+    command_panel->setLayout(new QHBoxLayout(command_panel));
+    actuation_panel->layout()->addWidget(command_panel);
+
     // steering panel
-    auto steering_panel = new QWidget(actuation_panel);
+    auto steering_panel = new QWidget(command_panel);
     steering_panel->setLayout(new QHBoxLayout(steering_panel));
-    actuation_panel->layout()->addWidget(steering_panel);
+    command_panel->layout()->addWidget(steering_panel);
     // steering label
     auto steering_l = new QLabel("STEERING : ", steering_panel);
     steering_l->setStyleSheet("color: rgb(255, 255, 255)");
@@ -232,9 +244,9 @@ DashboardComponent::DashboardComponent(const cycle::Params &params, QApplication
     steering_panel->layout()->addWidget(_steering);
 
     // throttle panel
-    auto throttle_panel = new QWidget(actuation_panel);
+    auto throttle_panel = new QWidget(command_panel);
     throttle_panel->setLayout(new QHBoxLayout(throttle_panel));
-    actuation_panel->layout()->addWidget(throttle_panel);
+    command_panel->layout()->addWidget(throttle_panel);
     // throttle label
     auto throttle_l = new QLabel("THROTTLE : ", throttle_panel);
     throttle_l->setStyleSheet("color: rgb(255, 255, 255)");
@@ -245,9 +257,9 @@ DashboardComponent::DashboardComponent(const cycle::Params &params, QApplication
     throttle_panel->layout()->addWidget(_throttle);
 
     // brake panel
-    auto brake_panel = new QWidget(actuation_panel);
+    auto brake_panel = new QWidget(command_panel);
     brake_panel->setLayout(new QHBoxLayout(brake_panel));
-    actuation_panel->layout()->addWidget(brake_panel);
+    command_panel->layout()->addWidget(brake_panel);
     // brake label
     auto brake_l = new QLabel("BRAKE : ", brake_panel);
     brake_l->setStyleSheet("color: rgb(255, 255, 255)");
@@ -257,9 +269,44 @@ DashboardComponent::DashboardComponent(const cycle::Params &params, QApplication
     _brake->setStyleSheet("color: rgb(255, 255, 255)");
     brake_panel->layout()->addWidget(_brake);
 
+    // override panel
+    auto override_panel = new QWidget(actuation_panel);
+    auto override_layout = new QHBoxLayout(override_panel);
+    override_panel->setLayout(override_layout);
+    actuation_panel->layout()->addWidget(override_panel);
+    // override label
+    auto override_l = new QLabel("OVERRIDE : ", override_panel);
+    override_l->setStyleSheet("color: rgb(255, 255, 255)");
+    override_layout->addStretch(25);
+    override_layout->addWidget(override_l, 15);
+    // override none
+    _override_none = new QLabel("NONE", override_panel);
+    _override_none->setStyleSheet("color: rgb(0, 0, 0)");
+    override_layout->addWidget(_override_none, 9);
+    // override partial
+    _override_partial = new QLabel("PARTIAL", override_panel);
+    _override_partial->setStyleSheet("color: rgb(0, 0, 0)");
+    override_layout->addWidget(_override_partial, 11);
+    // override full
+    _override_full = new QLabel("FULL", override_panel);
+    _override_full->setStyleSheet("color: rgb(0, 0, 0)");
+    override_layout->addWidget(_override_full, 12);
+    override_layout->addStretch(28);
+
     // show main window
     this->setStyleSheet("background-color: rgb(30, 30, 30)");
     this->show();
+}
+
+void DashboardComponent::serve()
+{
+    std::unique_lock<std::mutex> lock(_m_ai);
+    if ((_act_input.mode == ACT_OVERRIDE_PARTIAL) || (_prev_act_mode == ACT_OVERRIDE_PARTIAL))
+    {
+        _act_input.header.stamp = this->get_clock()->now();
+        _pub_input->publish(_act_input);
+    }
+    _prev_act_mode = _act_input.mode;
 }
 
 void DashboardComponent::on_vehicle(const msg::Vehicle &vehicle)
@@ -288,7 +335,8 @@ void DashboardComponent::on_traffic_light(const msg::Object3d &tfl)
 
 void DashboardComponent::on_act_cmd(const msg::ActCmd &act_cmd)
 {
-    emit actuation_changed(act_cmd.steering * 180.0 / M_PI, act_cmd.throttle, act_cmd.brake);
+    emit actuation_changed(act_cmd.mode, act_cmd.steering * 180.0 / M_PI,
+                           act_cmd.throttle, act_cmd.brake);
 }
 
 void DashboardComponent::on_mapping_status(const msg::Mapping &mapping)
@@ -315,6 +363,12 @@ void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int t
         _vehicle_status->setStyleSheet("color: rgb(255, 0, 0)");
         _vehicle_status->setText("ERROR");
     }
+    else if ((steering == STATUS_WARNING) || (throttle == STATUS_WARNING)
+             || (brake == STATUS_WARNING))
+    {
+        _vehicle_status->setStyleSheet("color: rgb(255, 127, 0)");
+        _vehicle_status->setText("WARN");
+    }
     else
     {
         _vehicle_status->setStyleSheet("color: rgb(0, 255, 0)");
@@ -327,6 +381,11 @@ void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int t
         _localization_status->setStyleSheet("color: rgb(0, 255, 0)");
         _localization_status->setText("OK");
     }
+    else if (gnss == STATUS_WARNING)
+    {
+        _localization_status->setStyleSheet("color: rgb(255, 127, 0)");
+        _localization_status->setText("WARN");
+    }
     else
     {
         _localization_status->setStyleSheet("color: rgb(255, 0, 0)");
@@ -334,20 +393,22 @@ void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int t
     }
 
     // perception
-    if (lidar != STATUS_OK)
-    {
-        _perception_status->setStyleSheet("color: rgb(255, 0, 0)");
-        _perception_status->setText("ERROR");
-    }
-    else if (camera != STATUS_OK)
-    {
-        _perception_status->setStyleSheet("color: rgb(255, 0, 0)");
-        _perception_status->setText("ERROR");
-    }
-    else
+    if ((lidar == STATUS_OK) && (camera == STATUS_OK))
     {
         _perception_status->setStyleSheet("color: rgb(0, 255, 0)");
         _perception_status->setText("OK");
+    }
+    else if (((lidar == STATUS_WARNING) && (camera == STATUS_OK))
+             || ((lidar == STATUS_OK) && (camera == STATUS_WARNING))
+             || ((lidar == STATUS_WARNING) && (camera == STATUS_WARNING)))
+    {
+        _perception_status->setStyleSheet("color: rgb(255, 127, 0)");
+        _perception_status->setText("WARN");
+    }
+    else
+    {
+        _perception_status->setStyleSheet("color: rgb(255, 0, 0)");
+        _perception_status->setText("ERROR");
     }
 }
 
@@ -431,11 +492,27 @@ void DashboardComponent::on_traffic_light_changed(int status)
     }
 }
 
-void DashboardComponent::on_actuation_changed(double steering, double throttle, double brake)
+void DashboardComponent::on_actuation_changed(int mode, double steering, double throttle, double brake)
 {
     _steering->setText(cycle::utils::round_str(steering, 2).c_str());
     _throttle->setText(cycle::utils::round_str(throttle, 2).c_str());
     _brake->setText(cycle::utils::round_str(brake, 2).c_str());
+
+    if (mode == ACT_OVERRIDE_NONE) {
+        _override_none->setStyleSheet("color: rgb(0, 255, 0)");
+        _override_partial->setStyleSheet("color: rgb(0, 0, 0)");
+        _override_full->setStyleSheet("color: rgb(0, 0, 0)");
+    }
+    if (mode == ACT_OVERRIDE_PARTIAL) {
+        _override_none->setStyleSheet("color: rgb(0, 0, 0)");
+        _override_partial->setStyleSheet("color: rgb(255, 127, 0)");
+        _override_full->setStyleSheet("color: rgb(0, 0, 0)");
+    }
+    if (mode == ACT_OVERRIDE_FULL) {
+        _override_none->setStyleSheet("color: rgb(0, 0, 0)");
+        _override_partial->setStyleSheet("color: rgb(0, 0, 0)");
+        _override_full->setStyleSheet("color: rgb(255, 127, 0)");
+    }
 }
 
 void DashboardComponent::on_tfl_timer()

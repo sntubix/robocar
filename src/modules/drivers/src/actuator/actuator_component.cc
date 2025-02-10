@@ -47,7 +47,6 @@ namespace robocar::drivers::actuator
 		if (frame->can_id != KIA_SOUL_OBD_WHEEL_SPEED_CAN_ID)
 			return OSCC_ERROR;
 		uint16_t raw = ((frame->data[offset + 1] & 0x0F) << 8) | frame->data[offset];
-		// 10^-1 precision, raw / 32.0
 		return ((int)(raw / 3.2) / 10.0);
 	}
 
@@ -58,7 +57,7 @@ namespace robocar::drivers::actuator
 		if (frame->can_id != KIA_SOUL_OBD_STEERING_WHEEL_ANGLE_CAN_ID)
 			return OSCC_ERROR;
 		int16_t raw = (frame->data[1] << 8) | frame->data[0];
-		return -((double)raw * KIA_SOUL_OBD_STEERING_ANGLE_SCALAR);
+		return ((double)raw * KIA_SOUL_OBD_STEERING_ANGLE_SCALAR);
 	}
 
 	static inline double get_brake_pressure(struct can_frame const *const frame)
@@ -167,6 +166,16 @@ namespace robocar::drivers::actuator
 		{
 			throw std::invalid_argument("invalid 'can_dev'");
 		}
+		_steering_ratio = params.get("steering_ratio").to_double();
+		if (_steering_ratio <= 0.0)
+		{
+			throw std::invalid_argument("'steering_ratio' must be > 0.0");
+		}
+		_steering_speed = (params.get("steering_speed").to_double() * _steering_ratio) * 180.0 / M_PI;
+		if (_steering_speed <= 0.0)
+		{
+			throw std::invalid_argument("'steering_speed' must be > 0.0");
+		}
 
 		// connect to CAN device
 		if (oscc_open(_can_dev.c_str()) != OSCC_ERROR)
@@ -204,7 +213,7 @@ namespace robocar::drivers::actuator
 
 		msg::ActStatus status;
 		status.header.stamp = cycle::utils::unix_ms_to_ros_time(now);
-		status.ad_engaged = is_engaged();
+		status.ad_engaged = (_steering_enabled || _throttle_enabled || _brake_enabled);
 		status.steering_status_stamp = _steering_status_stamp;
 		status.throttle_status_stamp = _throttle_status_stamp;
 		status.brake_status_stamp = _brake_status_stamp;
@@ -254,32 +263,11 @@ namespace robocar::drivers::actuator
 		status.steering_stamp = _steering_stamp;
 		status.velocity_stamp = _speed_stamp;
 		status.brake_stamp = _brake_stamp;
-		status.steering = _steering;
+		status.steering = _steering / _steering_ratio;
 		status.velocity = _speed;
 		status.brake = _brake;
 
 		_pub_act_status->publish(status);
-	}
-
-	bool ActuatorComponent::is_engaged()
-	{
-		return _steering_enabled || _throttle_enabled || _brake_enabled;
-	}
-
-	bool ActuatorComponent::publish_steering_angle(double angle, double velocity)
-	{
-		angle = angle * 180 / M_PI;
-		return oscc_publish_steering_angle(angle, velocity) == OSCC_OK;
-	}
-
-	bool ActuatorComponent::publish_throttle_position(double throttle)
-	{
-		return oscc_publish_throttle_position(std::abs(throttle)) == OSCC_OK;
-	}
-
-	bool ActuatorComponent::publish_brake_position(double brake)
-	{
-		return oscc_publish_brake_position(std::abs(brake)) == OSCC_OK;
 	}
 
 	void ActuatorComponent::on_act_toggle(const msg::ActToggle &act_toggle)
@@ -310,9 +298,39 @@ namespace robocar::drivers::actuator
 
 	void ActuatorComponent::on_act_cmd(const msg::ActCmd &act_cmd)
 	{
-		publish_brake_position(act_cmd.brake);
-		publish_throttle_position(act_cmd.throttle);
-		publish_steering_angle(-act_cmd.steering, act_cmd.steering_speed);
+		double brake = act_cmd.brake;
+		if (brake < 0.0)
+		{
+			brake = 0.0;
+		}
+		if (brake > 1.0)
+		{
+			brake = 1.0;
+		}
+
+		double throttle = act_cmd.throttle;
+		if (throttle < 0.0)
+		{
+			throttle = 0.0;
+		}
+		if (throttle > 1.0)
+		{
+			throttle = 1.0;
+		}
+
+		double steering = (-act_cmd.steering * _steering_ratio) * 180.0 / M_PI;
+		if (steering < -550.0)
+		{
+			steering = -550.0;
+		}
+		if (steering > 550.0)
+		{
+			steering = 550.0;
+		}
+
+		oscc_publish_brake_position(brake);
+		oscc_publish_throttle_position(throttle);
+		oscc_publish_steering_angle(steering, _steering_speed);
 	}
 
 } // namespace robocar::drivers::actuator

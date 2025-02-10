@@ -9,8 +9,6 @@
 #include "cycle/cycle.h"
 #include "common/common.h"
 
-#include "vehicle/ma_filters.h"
-
 namespace robocar::vehicle
 {
 	class VehicleComponent : public cycle::Service
@@ -27,8 +25,8 @@ namespace robocar::vehicle
 		uint64_t _pc_timeout = 500;
 		uint64_t _camera_timeout = 500;
 		uint64_t _planning_timeout = 500;
-		double _steering_ratio = 15.7;
-		double _steering_speed = 200.0;
+		uint64_t _input_timeout = 1000;
+		double _act_smoothing = 0.33;
 		double _steering_safety_coef = 0.16;
 		double _max_gnss_uncertainty = 0.5;
 
@@ -39,6 +37,8 @@ namespace robocar::vehicle
 		std::atomic<uint64_t> _planning_stamp = 0;
 		std::atomic<double> _gnss_uncertainty = 0.0;
 		std::atomic<double> _velocity = 0.0;
+
+		// steering safety
 		double _min_steering_speed = 0.0;
 		double _max_steering_speed = 0.0;
 		int _sd_index = 0;
@@ -51,9 +51,9 @@ namespace robocar::vehicle
 		msg::ActStatus _act_status;
 		msg::ActCmd _act_control;
 		msg::ActCmd _act_input;
-		std::unique_ptr<MA> _ma_steering;
-		std::unique_ptr<MA> _ma_throttle;
-		std::unique_ptr<MA> _ma_brake;
+		double _prev_act_steering = 0.0;
+		double _prev_act_throttle = 0.0;
+		double _prev_act_brake = 0.0;
 
 		// publishers
 		rclcpp::Publisher<msg::Vehicle>::SharedPtr _pub_vehicle;
@@ -69,7 +69,7 @@ namespace robocar::vehicle
 		rclcpp::Subscription<msg::Planning>::SharedPtr _sub_planning;
 		rclcpp::Subscription<msg::ActCmd>::SharedPtr _sub_control;
 
-		bool status_check();
+		bool status_check(rclcpp::Time curr_time);
 		void on_ad_toggle(const msg::AdToggle &ad_toggle);
 		void on_act_status(const msg::ActStatus &act_status);
 		void on_input(const msg::ActCmd &act_cmd);

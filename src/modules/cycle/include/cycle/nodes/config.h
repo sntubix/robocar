@@ -155,23 +155,23 @@ namespace cycle
 			parse(filename);
 		};
 
-		const std::vector<std::string> &get_services() const
+		const std::vector<std::string> &get_components() const
 		{
-			return _services;
+			return _components;
 		}
 
-		const Params &get_params(const std::string &s_name) const
+		const Params &get_params(const std::string &c_name) const
 		{
-			if (_s_params.count(s_name) < 1)
+			if (_c_params.count(c_name) < 1)
 			{
-				throw std::runtime_error("no parameters provided for service '" + s_name + "'");
+				throw std::runtime_error("no parameters provided for component '" + c_name + "'");
 			}
-			return _s_params.at(s_name);
+			return _c_params.at(c_name);
 		}
 
 	private:
-		std::vector<std::string> _services;
-		std::map<std::string, Params> _s_params;
+		std::vector<std::string> _components;
+		std::map<std::string, Params> _c_params;
 
 		void parse_global(const rapidjson::Value &g)
 		{
@@ -201,18 +201,18 @@ namespace cycle
 			}
 		}
 
-		void parse_section(std::string s_name, const rapidjson::Value &s)
+		void parse_section(std::string c_name, const rapidjson::Value &c)
 		{
-			// check duplicate service parameters
-			if (_s_params.count(s_name) > 0)
+			// check duplicate component parameters
+			if (_c_params.count(c_name) > 0)
 			{
-				throw std::runtime_error("duplicate parameters for '" + s_name + "'");
+				throw std::runtime_error("duplicate parameters for '" + c_name + "'");
 			}
 
-			// check service enabled/disabled
-			if (s.HasMember("enable"))
+			// check component enabled/disabled
+			if (c.HasMember("enable"))
 			{
-				if (!s.FindMember("enable")->value.GetBool())
+				if (!c.FindMember("enable")->value.GetBool())
 				{
 					return;
 				}
@@ -220,7 +220,7 @@ namespace cycle
 
 			// parse parameters
 			std::map<std::string, Param> params;
-			for (rapidjson::Value::ConstMemberIterator m = s.MemberBegin(); m != s.MemberEnd(); ++m)
+			for (rapidjson::Value::ConstMemberIterator m = c.MemberBegin(); m != c.MemberEnd(); ++m)
 			{
 				std::string p_name = m->name.GetString();
 				if (p_name == "enable")
@@ -248,8 +248,8 @@ namespace cycle
 					throw std::runtime_error("invalid parameter '" + p_name + "'");
 				}
 			}
-			_services.push_back(s_name);
-			_s_params.insert({s_name, Params(s_name, params)});
+			_components.push_back(c_name);
+			_c_params.insert({c_name, Params(c_name, params)});
 		}
 
 		void parse(const std::string &filename)
@@ -258,21 +258,21 @@ namespace cycle
 			std::ifstream fs(filename, std::ios::in);
 			std::string json((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
 			// check for "cycle" section
-			rapidjson::Document d;
-			d.Parse(json.c_str());
-			if (!d.IsObject())
+			rapidjson::Document doc;
+			doc.Parse(json.c_str());
+			if (!doc.IsObject())
 			{
 				throw std::runtime_error("unable to parse '" + filename + "', path might be incorrect!");
 			}
-			if (!d.HasMember("cycle"))
+			if (!doc.HasMember("cycle"))
 			{
 				throw std::runtime_error("expecting member 'cycle' in '" + filename + "'");
 			}
-			rapidjson::Value &c = d["cycle"];
+			rapidjson::Value &cycle = doc["cycle"];
 
 			// modules loop
-			for (rapidjson::Value::ConstMemberIterator m = c.MemberBegin();
-				 m != c.MemberEnd(); ++m)
+			for (rapidjson::Value::ConstMemberIterator m = cycle.MemberBegin();
+				 m != cycle.MemberEnd(); ++m)
 			{
 				std::string const &m_name = m->name.GetString();
 				if (!m->value.IsObject())
@@ -296,25 +296,25 @@ namespace cycle
 					}
 				}
 
-				// services loop
-				for (rapidjson::Value::ConstMemberIterator s = m->value.MemberBegin();
-					 s != m->value.MemberEnd(); ++s)
+				// components loop
+				for (rapidjson::Value::ConstMemberIterator c = m->value.MemberBegin();
+					 c != m->value.MemberEnd(); ++c)
 				{
-					std::string const &s_name = s->name.GetString();
-					if (!s->value.IsObject())
+					std::string const &c_name = c->name.GetString();
+					if (!c->value.IsObject())
 					{
-						if (s_name == "enable")
+						if (c_name == "enable")
 						{
 							continue;
 						}
 						else
 						{
-							throw std::runtime_error("invalid service '" + s_name + "'");
+							throw std::runtime_error("invalid component '" + c_name + "'");
 						}
 					}
 					else
 					{
-						parse_section(s_name, s->value);
+						parse_section(c_name, c->value);
 					}
 				}
 			}

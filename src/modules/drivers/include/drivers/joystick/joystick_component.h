@@ -25,7 +25,7 @@ namespace robocar::drivers::joystick
         double _max_steering = 0.6108652;
         double _steering_pow = 1.0;
 
-        msg::ActCmd _act;
+        int _prev_act_mode = ACT_OVERRIDE_NONE;
 
         // publishers
         rclcpp::Publisher<msg::AdToggle>::SharedPtr _pub_ad_toggle;
