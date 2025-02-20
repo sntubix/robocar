@@ -1,0 +1,19 @@
+<package format="3">
+  <name>robocar</name>
+  <version>0.9.0</version>
+  <description>RoboCar</description>
+  <maintainer email="mehdi.testouri@uni.lu">Mehdi TESTOURI</maintainer>
+  <maintainer email="gamal.elghazaly@uni.lu">Gamal ELGHAZALY</maintainer>
+  <license>MIT</license>
+  <url>https://github.com/sntubix/robocar</url>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>ros2launch</exec_depend>
+  <exec_depend>tfl_detector</exec_depend>
+  <depend>robocar_msgs</depend>
+  <depend>oscc</depend>
+  <depend>ouster</depend>
+  <depend>linefit_ground_segmentation</depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

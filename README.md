@@ -4,52 +4,49 @@ RoboCar is a modular, low footprint and easy to deploy autonomous driving softwa
 <img src="./robocar_viz.png" width="520"/>
 
 ### Software and Hardware Overview
-<img src="./robocar_overview.svg" width="750"/>
+<img src="./robocar_overview.png" width="770"/>
 
 ## Get Started
 
 ### Prerequisites
 The provided Dockerfile can be used to get a development environment easily.<br>
-Use `docker build -f docker/Dockerfile -t ubix/robocar .` and then run with `bash docker/run.sh`.<br>
+Use `docker build -f docker/Dockerfile -t ubix/robocar .` and then run with `bash docker/run.sh`. If your system does not support the `--gpus all` option, run with `bash docker/run.sh --igpu`.<br>
 Please note that some specific adjustments might be needed for deployment in a vehicle.
 
 ### Configuration
-Internal RoboCar nodes (components) are configured using a custom [`robocar.json`](./src/modules/startup/config/robocar.json) file. Below is an example configuration:
+Internal RoboCar nodes (components) are configured using a custom [`robocar.json`](./src/robocar/config/robocar.json) file. Below is an example configuration:
 
 ```json
 {
-  "cycle": {
+  "robocar": {
     "global": {
+      "launch_group": "default",
       "param_a": 50,
       "param_b": "b"
     },
-    "module_a": {
-      "enable": true,
-      "component_a": {
-        "enable": true,
-        "param_a": 10,
-        "param_c": 0.25,
-        "other_params": "..."
-      }
+    "component_a": {
+      "groups": ["default", "sim"],
+      "param_a": 10,
+      "param_c": 0.25,
+      "other_params": "..."
     },
-    "module_b": {
-      "enable": false,
-      "component_b": {
-        "other_params": "..."
-      },
-      "component_c": {
-        "other_params": "..."
-      }
+    "component_b": {
+      "groups": ["sim"],
+      "param_d": 0.5,
+      "other_params": "..."
+    },
+    "component_c": {
+      "groups": [],
+      "other_params": "..."
     }
   }
 }
 ```
 
-The configuration file is structured around modules containing components (ROS2 nodes). A component section contains parameters and an optional "enable" option. The component section name must match a registered RoboCar component, see [`src/modules/startup/src/main.cc`](./src/modules/startup/src/main.cc) for how to register components. A disabled module will be skipped during initialization, thus disabling all contained components irrespective of their individual settings. Global parameters are defined in the `"global"` section and can be overriden in a component section, see `"param_a"` in the above example.
+The configuration file is structured around components (ROS2 nodes) sections and a global parameters section. The component section name must match a registered RoboCar component, see [`src/robocar/src/main.cc`](./src/robocar/src/main.cc) for how to register components. A component section contains parameters and a mandatory `"groups"` option which sets the launch groups a component belongs to. Parameters defined in the `"global"` section can be overridden in a component section, see `"param_a"` in the above example.<br>
+The launch group to use must be specified in the `"global"` section under the `"launch_group"` option, in the above example, only `component_a` will be loaded whereas if launch group `"sim"` is used, both `component_a` and `component_b` are loaded.
 
-You should rebuild for changes in the configuration file to take effect or change `args="$(find-pkg-share startup)/config/robocar.json"` in [`robocar.launch`](./src/modules/startup/launch/robocar.launch) to a custom path.
-
-External ROS2 nodes should be added and configured using [`robocar.launch`](./src/modules/startup/launch/robocar.launch).
+External ROS2 nodes should be added and configured using [`robocar.launch.py`](./src/robocar/launch/robocar.launch.py).
 
 ### Build
 * Debug : `bash scripts/build.sh debug`.<br>
@@ -57,7 +54,7 @@ External ROS2 nodes should be added and configured using [`robocar.launch`](./sr
 
 ### Run
 First, source using `source install/setup.sh`.<br>
-RoboCar can be run using ROS2 launch : `ros2 launch startup robocar.launch`.
+RoboCar can be run using ROS2 launch : `ros2 launch robocar robocar.launch.py`.
 
 ## Citation
 If you find RoboCar useful or relevant for your research, please cite our paper:

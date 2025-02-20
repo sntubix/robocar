@@ -22,5 +22,5 @@ RUN rm -rf /tmp/libs && rm -rf /var/lib/apt/lists/*
 RUN useradd -s /bin/bash -m robocar
 
 USER robocar
-WORKDIR /host
+WORKDIR /ws
 ENTRYPOINT ["bash"]
