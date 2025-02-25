@@ -34,7 +34,11 @@ class Detector(Node):
 
     def on_frame(self, frame: CompressedImage):
         img = np.frombuffer(frame.data, np.uint8)
+        if img.size == 0:
+            return
         img = cv2.imdecode(img, cv2.IMREAD_COLOR)
+        if img is None:
+            return
 
         results = self.model.predict(img, verbose=False)
         for result in results:

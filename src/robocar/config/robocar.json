@@ -83,7 +83,7 @@
             "obj_min_height": 0.05
         },
         "vehicle_component": {
-            "groups": ["default", "sim"],
+            "groups": ["default", "sim", "tod"],
             "period": 25,
             "can_timeout": 500,
             "gnss_timeout": 500,
@@ -98,7 +98,7 @@
             "steering_safety_coef": 0.021
         },
         "actuator_component": {
-            "groups": ["default"],
+            "groups": ["default", "tod"],
             "period": 25,
             "can_dev": "can0",
             "steering_ratio": 15.7,
@@ -123,7 +123,7 @@
             "steering_pow": 2.2
         },
         "gsof_component": {
-            "groups": ["default"],
+            "groups": ["default", "tod"],
             "period": 10,
             "host": "192.168.1.101",
             "port": 28001,
@@ -142,7 +142,7 @@
             "tf_theta": -1.5
         },
         "tod_component": {
-            "groups": ["default"],
+            "groups": ["sim", "tod"],
             "period": 35,
             "max_steering": 0.57,
             "max_throttle": 0.6,
@@ -194,10 +194,10 @@
             "static_max_dist": 100.0
         },
         "localization_component": {
-            "groups": ["default"]
+            "groups": ["default", "tod"]
         },
         "map_component": {
-            "groups": ["default", "sim"],
+            "groups": ["default", "sim", "tod"],
             "waypoints_length": 15,
             "waypoints_interdistance": 0.3,
             "waypoints_interdistance_max": 15.0,
@@ -210,13 +210,13 @@
             "waypoints_interval": 1.0
         },
         "visualization_component": {
-            "groups": ["default", "sim"],
+            "groups": ["default", "sim", "tod"],
             "vehicle_mesh": "src/robocar/mesh/low_poly_car.fbx",
             "map_geofeatures": "src/robocar/maps/belval_geofeatures.geojson",
             "map_virtual_geofeatures": "src/robocar/maps/belval_virtual_geofeatures.geojson"
         },
         "dashboard_component": {
-            "groups": ["default", "sim"],
+            "groups": ["default", "sim", "tod"],
             "rviz_config": "src/robocar/config/robocar.rviz"
         },
         "logging_component": {

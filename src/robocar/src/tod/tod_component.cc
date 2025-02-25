@@ -101,6 +101,7 @@ void TODComponent::serve()
 
     auto z_msg = zmq::message_t(payload_len);
     memcpy(z_msg.data(), payload, payload_len);
+    //TODO zmq warning
     _sock_data.send(z_msg);
 }
 
@@ -123,7 +124,7 @@ void TODComponent::on_gnss(const msg::GNSS &gnss)
     _vehicle_data.roll = gnss.roll;
     _vehicle_data.pitch = gnss.pitch;
     _vehicle_data.yaw = gnss.heading;
-    //_vehicle_data.vel = gnss.velocity;
+    _vehicle_data.vel = gnss.velocity;
 }
 
 void TODComponent::on_loc(const msg::Localization &loc)

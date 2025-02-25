@@ -1,7 +1,7 @@
 #!/bin/sh
 
 GPU_OPTION="--gpus all"
-if [ "$1" == "--igpu" ]; then
+if [ "$1" = "--igpu" ]; then
   GPU_OPTION=""
 fi
 

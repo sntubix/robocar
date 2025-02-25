@@ -2,9 +2,9 @@ FROM docker.io/ros:humble
 
 # install tools and libraries
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
-    vim git ffmpeg clang gcc gdb cmake python3-pip python3-matplotlib \
+    vim git ffmpeg clang gcc gdb cmake python3-pip libzmq3-dev \
     rapidjson-dev libeigen3-dev libopencv-dev libsdl2-dev libserial-dev \
-    opencl-headers ocl-icd-opencl-dev intel-opencl-icd libzmq3-dev
+    opencl-headers ocl-icd-opencl-dev intel-opencl-icd
 RUN update-alternatives --set c++ /usr/bin/clang++
 
 # install ROS components
@@ -13,7 +13,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
     ros-humble-cv-bridge ros-humble-image-transport-plugins
 
 # install python libraries
-RUN pip install ultralytics pygame pyzmq vidgear ffpyplayer matplotlib
+RUN pip install ultralytics pygame pyzmq vidgear ffpyplayer
 
 # clear tmp files and cache
 RUN rm -rf /tmp/libs && rm -rf /var/lib/apt/lists/*
