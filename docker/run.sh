@@ -1,8 +1,8 @@
 #!/bin/sh
 
-GPU_OPTION="--gpus all"
-if [ "$1" = "--igpu" ]; then
-  GPU_OPTION=""
+GPU_OPTION=""
+if [ "$1" = "--gpu" ]; then
+  GPU_OPTION="--gpus all"
 fi
 
 docker run -it --rm \

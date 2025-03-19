@@ -38,7 +38,7 @@ namespace robocar
 			}
 
 			// create log file
-			_file = std::fopen("log.csv", "w");
+			_file = std::fopen("robocar_log.csv", "w");
 			if (_file == NULL)
 				throw std::runtime_error("unable to create log file");
 			names = "timestamp,ad_engaged";

@@ -20,8 +20,10 @@ namespace robocar::tod
 		VehicleData() {}
 
 		uint64_t stamp = 0;
+		uint64_t tod_msg_stamp = 0;
 		bool ad_engaged = false;
 		double steering = 0.0;
+		double steering_n = 0.0;
 		double lat = 0.0;
 		double lon = 0.0;
 		double alt = 0.0;

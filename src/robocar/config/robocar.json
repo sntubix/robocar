@@ -2,7 +2,7 @@
     "robocar": {
         "global": {
             "launch_group": "sim",
-            "period": 50,
+            "period": 40,
             "cl_platform_id": 0,
             "map": "src/robocar/maps/kirchberg.geojson",
             "target_speed": 40.0,
@@ -17,7 +17,6 @@
         },
         "planning_component": {
             "groups": ["default", "sim"],
-            "period": 50,
             "margin_up": 0.30,
             "margin_down": 0.25,
             "objects_window": 10,
@@ -99,7 +98,7 @@
         },
         "actuator_component": {
             "groups": ["default", "tod"],
-            "period": 25,
+            "period": 10,
             "can_dev": "can0",
             "steering_ratio": 15.7,
             "steering_speed": 0.356
@@ -143,14 +142,14 @@
         },
         "tod_component": {
             "groups": ["sim", "tod"],
-            "period": 35,
+            "period": 10,
             "max_steering": 0.57,
             "max_throttle": 0.6,
             "max_brake": 0.4
         },
         "sim_vehicle_component": {
             "groups": ["sim"],
-            "period": 25,
+            "period": 10,
             "gravity": 9.81,
             "rolling_resistance": 0.02,
             "drag": 0.00029,

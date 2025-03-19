@@ -18,8 +18,10 @@ const char* VehicleData::to_bytes() {
     // set values
     doc.SetObject();
 	doc.AddMember("stamp", rapidjson::Value(stamp), doc.GetAllocator());
+    doc.AddMember("tod_msg_stamp", rapidjson::Value(tod_msg_stamp), doc.GetAllocator());
 	doc.AddMember("ad_engaged", rapidjson::Value(ad_engaged), doc.GetAllocator());
     doc.AddMember("steering", rapidjson::Value(steering), doc.GetAllocator());
+    doc.AddMember("steering_n", rapidjson::Value(steering_n), doc.GetAllocator());
 	doc.AddMember("lat", rapidjson::Value(lat), doc.GetAllocator());
 	doc.AddMember("lon", rapidjson::Value(lon), doc.GetAllocator());
 	doc.AddMember("alt", rapidjson::Value(alt), doc.GetAllocator());
@@ -86,6 +88,8 @@ TODComponent::TODComponent(const robocar::Params &params) : robocar::Component(p
 
 void TODComponent::serve()
 {
+    auto lock = std::unique_lock<std::mutex>(_m_vd);
+
     //TODO optimize this by only applying latest tod_msg
     zmq::recv_result_t nb = 1;
     while (nb) {
@@ -94,10 +98,10 @@ void TODComponent::serve()
         on_tod_msg(std::string(static_cast<char*>(z_msg.data()), z_msg.size()));
     }
 
-    auto lock = std::unique_lock<std::mutex>(_m_vd);
-
     auto payload = _vehicle_data.to_bytes();
     auto payload_len = strlen(payload);
+
+    lock.unlock();
 
     auto z_msg = zmq::message_t(payload_len);
     memcpy(z_msg.data(), payload, payload_len);
@@ -109,6 +113,7 @@ void TODComponent::on_vehicle(const msg::Vehicle &vehicle) {
     _m_vd.lock();
     _vehicle_data.ad_engaged = vehicle.ad_engaged;
     _vehicle_data.steering = vehicle.steering;
+    _vehicle_data.steering_n = vehicle.steering / _max_steering;
     _m_vd.unlock();
     _ad_engaged = vehicle.ad_engaged;
 }
@@ -168,11 +173,7 @@ void TODComponent::on_tod_msg(const std::string& tod_msg)
             return;
         }
 
-        auto now = robocar::Time::now().ms();
-        auto input_stamp = doc["stamp"].GetUint64();
-        if (input_stamp > now) {
-            input_stamp = now;
-        }
+        _vehicle_data.tod_msg_stamp = doc["stamp"].GetUint64();
 
         bool ad_engage = doc["ad_engage"].GetBool();
 
@@ -218,7 +219,7 @@ void TODComponent::on_tod_msg(const std::string& tod_msg)
         // }
 
         msg::ActCmd act_cmd;
-        act_cmd.header.stamp = robocar::utils::unix_ms_to_ros_time(input_stamp);
+        act_cmd.header.stamp = this->get_clock()->now();
         act_cmd.mode = mode;
         act_cmd.steering = steering;
         act_cmd.throttle = throttle;

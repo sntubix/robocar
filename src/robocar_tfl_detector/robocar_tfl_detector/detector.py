@@ -15,7 +15,7 @@ from robocar_msgs.msg import Object2d, Objects2d
 
 class Detector(Node):
     def __init__(self, model_path):
-        super().__init__('tfl_detector')
+        super().__init__('robocar_tfl_detector')
         self.conf = 0.25
         self.nms_iou = 0.7
         self.model = YOLO(model_path)

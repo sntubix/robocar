@@ -1,10 +1,10 @@
 from setuptools import setup
 
-package_name = 'tfl_detector'
+package_name = 'robocar_tfl_detector'
 
 setup(
     name=package_name,
-    version='0.0.1',
+    version='0.9.0',
     packages=[package_name],
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -16,11 +16,11 @@ setup(
     zip_safe=True,
     maintainer='Mehdi Testouri',
     maintainer_email='mehdi.testouri@uni.lu',
-    description='Yolov8 based traffic light detection.',
+    description='YOLOv8 based traffic light detector',
     license='MIT',
     entry_points={
         'console_scripts': [
-            'tfl_detector = tfl_detector.detector:main'
+            'robocar_tfl_detector = robocar_tfl_detector.detector:main'
         ],
     },
 )

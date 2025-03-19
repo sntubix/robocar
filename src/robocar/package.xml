@@ -8,7 +8,8 @@
   <url>https://github.com/sntubix/robocar</url>
   <buildtool_depend>ament_cmake</buildtool_depend>
   <exec_depend>ros2launch</exec_depend>
-  <exec_depend>tfl_detector</exec_depend>
+  <exec_depend>robocar_tfl_detector</exec_depend>
+  <exec_depend>robocar_tod_stream</exec_depend>
   <depend>robocar_msgs</depend>
   <depend>oscc</depend>
   <depend>ouster</depend>

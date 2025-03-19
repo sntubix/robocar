@@ -2,47 +2,42 @@
 
 # Copyright (c) 2024 University of Luxembourg, MIT License
 
+import os
 import argparse
+import subprocess
 import time, json
-from collections import deque
 from typing import List, Tuple, Dict
 import numpy as np
-import pygame, cv2
+import pandas as pd
+import pygame
 import zmq
-from ffpyplayer.player import MediaPlayer
 
 
 class TodInterface():
-    def __init__(self, w_width=1600, w_height=900, input="tx", v_host="localhost", cam_source="rtsp"):
+    def __init__(self, w_width=1024, w_height=210, input="tx", v_host="localhost", cam_source="rtsp",
+                 n_eval_rtt=0, n_eval_steer=0):
         self._width = w_width
-        self._cam_height = w_height
-        self._height = round(1.14 * self._cam_height)
+        self._height = w_height
         self._input_conf = self._load_input_conf(input)
         self._cam_source = cam_source
+        self._n_eval_rtt = n_eval_rtt
+        self._n_eval_steer = n_eval_steer
+        self._eval_rtt = pd.Series()
+        self._eval_v_steer = pd.Series()
+        self._eval_t_steer = pd.Series()
+        self._prev_vd_stamp = 0
 
         self._vehicle_host = v_host
         self._vehicle_data = {
+            'tod_msg_stamp': 0,
             'ad_engaged': False,
             'steering': 0.0,
             'vel': 0.0
         }
-        self._vehicle_cam = None
 
-        # init latency
-        self._prev_cam_stamp = 0
-        self._cam_latencies = deque(maxlen=10)
-        for i in range(self._cam_latencies.maxlen):
-            self._cam_latencies.append(0.0)
-        self._cam_latencies_sum = 0.0
-        self._cam_latency = 0.0
-
-    def _get_steering_ind(self, win_width: int, win_height: int, center: bool,
-                          steering: float) -> List[Tuple]:
-        offset_x = 0.5 * win_width
-        if center:
-            offset_y = 0.45 * win_height
-        else:
-            offset_y = 0.9 * win_height
+    def _get_steering_ind(self, w_width: int, w_height: int, steering: float) -> List[Tuple]:
+        offset_x = 0.5 * w_width
+        offset_y = 0.45 * w_height
         x1 = -9.0
         x2 = 9.0
         y1 = 50.0
@@ -102,12 +97,13 @@ class TodInterface():
         _sock_cmd.connect(f"tcp://{self._vehicle_host}:5001")
 
         if self._cam_source == "rtsp":
-            lib_opts = {'fflags':'nobuffer', 'flags':'low_delay'}
-            _mp_cam = MediaPlayer(f"rtsp://{self._vehicle_host}:8554/robocar", lib_opts=lib_opts)
+            cam_proc = subprocess.Popen(["ffplay", "-fflags", "nobuffer", "-flags", "low_delay", "-vf", "setpts=0",
+                                         f"rtsp://{self._vehicle_host}:8554/robocar"])
 
         # init pygame
+        os.environ['SDL_AUDIODRIVER'] = 'dsp'
         pygame.init()
-        pygame.display.set_caption("RoboCar Teleoperated Driving")
+        pygame.display.set_caption("RoboCar TOD Interface")
         screen = pygame.display.set_mode((self._width, self._height), pygame.RESIZABLE)
         font = pygame.font.Font(None, 36)
         clock = pygame.time.Clock()
@@ -136,6 +132,8 @@ class TodInterface():
             'brake': 0.0
         }
 
+        c_eval_rtt = 0
+        c_eval_steer = 0
         running = True
         while running:
             kb_tod = False
@@ -177,7 +175,7 @@ class TodInterface():
                 if kb_tod:
                     tod_engaged = not tod_engaged
 
-            if tod_engaged == True:
+            if tod_engaged:
                 steering = 0.0
                 throttle = 0.0
                 brake = 0.0
@@ -237,65 +235,55 @@ class TodInterface():
 
             socks = dict(_poller.poll(timeout=20))
 
-            if _sock_data in socks and socks[_sock_data] == zmq.POLLIN:
+            if (_sock_data in socks) and (socks[_sock_data] == zmq.POLLIN):
+                # receive msg
                 msg_data = _sock_data.recv()
+                now = round(time.time() * 1000.0)
+                # deserialize
                 self._vehicle_data = json.loads(str(msg_data, "utf-8"))
+                vd_stamp_diff = self._vehicle_data['stamp'] - self._prev_vd_stamp
+
+                if tod_engaged and (vd_stamp_diff > 0):
+                    self._prev_vd_stamp = self._vehicle_data['stamp']
+
+                    if (self._n_eval_rtt > 0):
+                        self._eval_rtt[self._vehicle_data['stamp']] = now - self._vehicle_data['tod_msg_stamp']
+                        c_eval_rtt += 1
+
+                        if c_eval_rtt >= self._n_eval_rtt:
+                            self._eval_rtt.to_csv("tod_eval_rtt.csv")
+                            self._n_eval_rtt = 0
+                            print("RTT evaluation done, saved tod_eval_rtt.csv")
+
+                    if ad_engaged and (self._n_eval_steer > 0):
+                        self._eval_v_steer[self._vehicle_data['stamp']] = self._vehicle_data['steering_n']
+                        self._eval_t_steer[tod_msg['stamp']] = tod_msg['steering']
+                        c_eval_steer += 1
+
+                        if c_eval_steer >= self._n_eval_steer:
+                            # self._eval_v_steer.to_csv("tod_eval_v_steer.csv")
+                            # self._eval_t_steer.to_csv("tod_eval_t_steer.csv")
+                            steer_lat = pd.merge(self._eval_v_steer.rename('v_steer'),
+                                                 self._eval_t_steer.rename('t_steer'),
+                                                 left_index=True, right_index=True, how='outer').sort_index()
+                            steer_lat.interpolate(method='linear', inplace=True)
+                            steer_lat.to_csv("tod_eval_steer_lat.csv")
+                            self._n_eval_steer = 0
+                            print("steering latency evaluation done, saved tod_eval_steer_lat.csv")
+
             ad_engaged = self._vehicle_data['ad_engaged']
-
-            self._width, self._height = pygame.display.get_surface().get_size()
-            self._cam_height = round(self._height / 1.14)
-            v_cam = None
-
-            if self._cam_source == "rtsp":
-                #TODO fix this
-                raise RuntimeError("RTSP support is incomplete")
-                ff_frame, val = _mp_cam.get_frame()
-                if (val != 'eof') and (ff_frame is not None):
-                    ff_frame, _ = ff_frame
-                    ff_frame_size = ff_frame.get_size()
-                    #v_cam = cv2.Mat(np.asarray(ff_frame.to_memoryview()[0]).reshape(ff_frame_size[0], ff_frame_size[1], 3))
-                    #print(len(ff_frame.to_memoryview()[0]))
-                    #v_cam = cv2.imdecode(np.frombuffer(ff_frame.to_memoryview()[0], np.uint8).copy(), cv2.IMREAD_UNCHANGED)
-                    #print(v_cam)
-
-            if v_cam is not None:
-                # compute frame latency
-                now = time.time() * 1000.0
-                cam_latency = now - self._prev_cam_stamp
-                self._prev_cam_stamp = now
-
-                # compute average latency
-                self._cam_latencies_sum -= self._cam_latencies[0]
-                self._cam_latencies_sum += cam_latency
-                self._cam_latencies.append(cam_latency)
-                cam_latency = round(self._cam_latencies_sum / self._cam_latencies.maxlen)
-                self._cam_latency = cam_latency
-
-                # process frame
-                self._vehicle_cam = cv2.resize(v_cam, (self._width, self._cam_height))
-                self._vehicle_cam = cv2.rotate(self._vehicle_cam, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                self._vehicle_cam = cv2.cvtColor(self._vehicle_cam, cv2.COLOR_BGR2RGB)
+            #TODO ZMQ buffers lag?
 
             # UI layout
+            self._width, self._height = pygame.display.get_surface().get_size()
             tod_w = 0.08
-            tod_h = 0.93
+            tod_h = 0.43
             ads_w = 0.25
-            ads_h = 0.93
+            ads_h = 0.43
             speed_w = 0.60
-            speed_h = 0.93
+            speed_h = 0.43
             cmd_w = 0.75
-            cmd_h = 0.93
-            steer_ind_center = False
-
-            # camera
-            if self._vehicle_cam is not None:
-                screen.blit(pygame.surfarray.make_surface(self._vehicle_cam), (0, 0))
-            else:
-                tod_h = 0.43
-                ads_h = 0.43
-                speed_h = 0.43
-                cmd_h = 0.43
-                steer_ind_center = True
+            cmd_h = 0.43
 
             # TOD status
             if tod_engaged:
@@ -315,7 +303,7 @@ class TodInterface():
 
             # steering indicator
             points = self._get_steering_ind(self._width, self._height,
-                                            steer_ind_center, -self._vehicle_data['steering'])
+                                            -self._vehicle_data['steering'])
             pygame.draw.polygon(screen, (0, 0, 255), points)
 
             # speed
@@ -323,7 +311,7 @@ class TodInterface():
                         True, (255, 255, 255)), (speed_w * self._width, speed_h * self._height))
 
             # cmd
-            screen.blit(font.render(f"cmd {cmd['steering']} {cmd['throttle']} {cmd['brake']}",
+            screen.blit(font.render(f"cmd {round(cmd['steering'], 2)} {round(cmd['throttle'], 2)} {round(cmd['brake'], 2)}",
                         True, (255, 255, 255)), (cmd_w * self._width, cmd_h * self._height))
 
             pygame.display.update()
@@ -334,10 +322,12 @@ class TodInterface():
 def main():
     parser = argparse.ArgumentParser(description="RoboCar Teleoperated Driving Interface")
     parser.add_argument("--w_width", type=int, default=1024, help="window width")
-    parser.add_argument("--w_height", type=int, default=576, help="window height")
+    parser.add_argument("--w_height", type=int, default=210, help="window height")
     parser.add_argument("--input", type=str, default="tx", help="input device")
     parser.add_argument("--v_host", type=str, default="localhost", help="vehicle hostname")
-    parser.add_argument("--cam", type=str, default="rtsp", help="cam source: none, zmq or rtsp")
+    parser.add_argument("--cam", type=str, default="rtsp", help="cam source: none or rtsp")
+    parser.add_argument("--eval_rtt", type=int, default=0, help="evaluate RTT over N samples")
+    parser.add_argument("--eval_steer", type=int, default=0, help="evaluate steering latency over N samples")
     args = parser.parse_args()
 
     if not (args.w_width > 0):
@@ -345,7 +335,7 @@ def main():
     if not (args.w_height > 0):
         raise ValueError("'w_height' must be > 0")
 
-    tod_interface = TodInterface(args.w_width, args.w_height, args.input, args.v_host, args.cam)
+    tod_interface = TodInterface(args.w_width, args.w_height, args.input, args.v_host, args.cam, args.eval_rtt, args.eval_steer)
     tod_interface.run()
 
 

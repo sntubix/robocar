@@ -13,7 +13,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
     ros-humble-cv-bridge ros-humble-image-transport-plugins
 
 # install python libraries
-RUN pip install ultralytics pygame pyzmq vidgear ffpyplayer
+RUN pip install ultralytics pygame pyzmq vidgear
 
 # clear tmp files and cache
 RUN rm -rf /tmp/libs && rm -rf /var/lib/apt/lists/*

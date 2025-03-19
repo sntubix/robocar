@@ -1,7 +1,7 @@
 <package>
-  <name>tfl_detector</name>
+  <name>robocar_tfl_detector</name>
   <version>0.9.0</version>
-  <description>Yolov8 based traffic light detector</description>
+  <description>YOLOv8 based traffic light detector</description>
   <maintainer email="mehdi.testouri@uni.lu">Mehdi Testouri</maintainer>
   <maintainer email="gamal.elghazaly@uni.lu">Gamal ELGHAZALY</maintainer>
   <license>MIT</license>

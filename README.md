@@ -10,7 +10,7 @@ RoboCar is a modular, low footprint and easy to deploy autonomous driving softwa
 
 ### Prerequisites
 The provided Dockerfile can be used to get a development environment easily.<br>
-Use `docker build -f docker/Dockerfile -t ubix/robocar .` and then run with `bash docker/run.sh`. If your system does not support the `--gpus all` option, run with `bash docker/run.sh --igpu`.<br>
+Use `docker build -f docker/Dockerfile -t ubix/robocar .` and then run with `bash docker/run.sh`. If your system supports the `--gpus all` option, run with `bash docker/run.sh --gpu`. Some nodes (e.g `robocar_tfl_detector`) will need a dedicated GPU to work properly.<br>
 Please note that some specific adjustments might be needed for deployment in a vehicle.
 
 ### Configuration
