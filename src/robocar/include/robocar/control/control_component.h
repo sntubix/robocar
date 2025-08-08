@@ -10,6 +10,8 @@
 
 #include <deque>
 
+#include <visualization_msgs/msg/marker.hpp>
+
 namespace robocar
 {
 	namespace control
@@ -86,10 +88,13 @@ namespace robocar
 			uint64_t _th_filter_stamp = 0;
 			double _prev_throttle = 0.0;
 
+			// target marker
+			visualization_msgs::msg::Marker _target_marker;
+
 			// publishers
 			rclcpp::Publisher<msg::ActCmd>::SharedPtr _pub_act;
-			rclcpp::Publisher<msg::Waypoint>::SharedPtr _pub_target;
 			rclcpp::Publisher<msg::LogEntry>::SharedPtr _pub_log;
+			rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr _pub_target_marker;
 			// subscribers
 			rclcpp::Subscription<msg::Localization>::SharedPtr _sub_loc;
 			rclcpp::Subscription<msg::Planning>::SharedPtr _sub_planning;

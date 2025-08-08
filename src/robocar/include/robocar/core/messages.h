@@ -19,7 +19,6 @@
 #include "robocar_msgs/msg/object3d.hpp"
 #include "robocar_msgs/msg/objects2d.hpp"
 #include "robocar_msgs/msg/objects3d.hpp"
-#include "robocar_msgs/msg/objects_circles.hpp"
 #include "robocar_msgs/msg/path.hpp"
 #include "robocar_msgs/msg/planning.hpp"
 #include "robocar_msgs/msg/target_speed.hpp"

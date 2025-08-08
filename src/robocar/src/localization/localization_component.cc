@@ -6,10 +6,15 @@
 #include "robocar/localization/localization_component.h"
 #include "robocar/core/utils/geodesy.h"
 
+#include <tf2/LinearMath/Quaternion.h>
+
 using namespace robocar::localization;
 
 LocalizationComponent::LocalizationComponent(const robocar::Params &params) : robocar::Component(params, false)
 {
+	// transform
+	_tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(*this);
+
 	// publishers
 	_pub_loc = this->create_publisher<msg::Localization>("localization/position", 1);
 	_pub_log = this->create_publisher<msg::LogEntry>("logging/entry", 1);
@@ -60,4 +65,22 @@ void LocalizationComponent::on_gnss(const msg::GNSS &gnss)
 	log_entry.value.push_back(gnss.lon);
 
 	_pub_log->publish(log_entry);
+
+	// init quaternion from yaw
+	tf2::Quaternion quaternion;
+	quaternion.setRPY(0, 0, loc.yaw);
+
+	// publish transform
+	geometry_msgs::msg::TransformStamped tf_stamped;
+	tf_stamped.header.stamp = loc.header.stamp;
+	tf_stamped.header.frame_id = "map";
+	tf_stamped.child_frame_id = "vehicle";
+	tf_stamped.transform.translation.x = loc.x;
+	tf_stamped.transform.translation.y = loc.y;
+	tf_stamped.transform.translation.z = 0.0;
+	tf_stamped.transform.rotation.x = quaternion.x();
+	tf_stamped.transform.rotation.y = quaternion.y();
+	tf_stamped.transform.rotation.z = quaternion.z();
+	tf_stamped.transform.rotation.w = quaternion.w();
+	_tf_broadcaster->sendTransform(tf_stamped);
 }

@@ -182,10 +182,24 @@ namespace robocar
 				throw std::invalid_argument("'max_brake' must belong to ]0.0, 1.0]");
 			}
 
+			// init target marker
+			_target_marker.id = 2;
+			_target_marker.header.stamp = this->get_clock()->now();
+			_target_marker.header.frame_id = "vehicle";
+			_target_marker.action = visualization_msgs::msg::Marker::ADD;
+			_target_marker.type = visualization_msgs::msg::Marker::POINTS;
+			_target_marker.pose.orientation.w = 1.0;
+			_target_marker.scale.x = 0.5;
+			_target_marker.scale.y = 0.5;
+			_target_marker.color.a = 0.5f;
+			_target_marker.color.r = 0.8f;
+			_target_marker.color.g = 0.0f;
+			_target_marker.color.b = 0.2f;
+
 			// publishers
 			_pub_act = this->create_publisher<msg::ActCmd>("vehicle/control", 1);
-			_pub_target = this->create_publisher<msg::Waypoint>("control/target", 1);
 			_pub_log = this->create_publisher<msg::LogEntry>("logging/entry", 1);
+			_pub_target_marker = this->create_publisher<visualization_msgs::msg::Marker>("viz/control/target", 1);
 			// subscribers
 			_sub_loc = this->create_subscription<msg::Localization>("localization/position", 1,
 																	std::bind(&ControlComponent::on_localization,
@@ -206,6 +220,7 @@ namespace robocar
 			// retrieve latest control data
 			bool ad_engaged = _ad_engaged;
 			double curr_steering = _vehicle_steering;
+			auto loc_stamp = _loc.header.stamp;
 			uint64_t stamp = robocar::utils::ros_to_unix_ms_time(_loc.header.stamp);
 			double pitch = _loc.pitch;
 			double curr_theta = _loc.yaw;
@@ -227,7 +242,7 @@ namespace robocar
 
 			// init actuation
 			msg::ActCmd act;
-			act.header.stamp = robocar::utils::unix_ms_to_ros_time(stamp);
+			act.header.stamp = loc_stamp;
 			act.mode = ACT_OVERRIDE_NONE;
 			act.steering = 0.0;
 			act.throttle = 0.0;
@@ -607,10 +622,17 @@ namespace robocar
 			log_entry.name.push_back(name);
 			log_entry.value.push_back(obstacle_dv);
 
-			// publish target point and actuation
-			_pub_target->publish(target_point);
+			// publish actuation and log entry
 			_pub_act->publish(act);
 			_pub_log->publish(log_entry);
+
+			// publish target marker
+			_target_marker.points.clear();
+			geometry_msgs::msg::Point point;
+			point.x = target_point.x;
+			point.y = target_point.y;
+			_target_marker.points.push_back(point);
+			_pub_target_marker->publish(_target_marker);
 		}
 
 		msg::Trajectory ControlComponent::transform(msg::Trajectory const &t, msg::Localization const &loc)

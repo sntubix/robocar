@@ -12,8 +12,9 @@ find_package(OpenCV REQUIRED)
 find_package(OpenCL REQUIRED)
 find_library(ZeroMQ zmq REQUIRED)
 find_package(SDL2 REQUIRED)
-find_package(PkgConfig)
-pkg_check_modules(libserial libserial REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GST REQUIRED gstreamer-1.0)
+pkg_check_modules(GST_RTSP_SERVER REQUIRED gstreamer-rtsp-server-1.0)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -39,12 +40,13 @@ find_package(robocar_msgs REQUIRED)
 
 include_directories(
     include
+    ${GST_INCLUDE_DIRS}
+    ${GST_RTSP_SERVER_INCLUDE_DIRS}
 )
 
 add_executable(robocar
     src/main.cc
     src/drivers/actuator/actuator_component.cc
-    src/drivers/alexa/alexa_component.cc
     src/drivers/camera/camera_component.cc
     src/drivers/gnss/gsof_component.cc
     src/drivers/joystick/joystick_component.cc
@@ -62,13 +64,13 @@ add_executable(robocar
     src/simulation/sim_objects_component.cc
     src/simulation/sim_objects_agent.cc
     src/vehicle/vehicle_component.cc
-    include/robocar/visualization/dashboard_component.h
-    src/visualization/dashboard_component.cc
-    src/visualization/visualization_component.cc
+    include/robocar/hmi/hmi_component.h
+    src/hmi/hmi_component.cc
 )
 target_link_libraries(robocar
-    ${libserial_LIBRARIES}
     zmq
+    ${GST_LIBRARIES}
+    ${GST_RTSP_SERVER_LIBRARIES}
 )
 
 install(

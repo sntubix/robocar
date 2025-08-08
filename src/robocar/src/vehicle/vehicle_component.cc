@@ -84,10 +84,10 @@ VehicleComponent::VehicleComponent(const robocar::Params &params) : robocar::Com
 														 rclcpp::SensorDataQoS().keep_last(1),
 														 std::bind(&VehicleComponent::on_point_cloud,
 																   this, std::placeholders::_1));
-	_sub_image = this->create_subscription<msg::CompressedImage>("sensors/camera/compressed",
-																 rclcpp::SensorDataQoS().keep_last(1),
-																 std::bind(&VehicleComponent::on_image,
-																		   this, std::placeholders::_1));
+	_sub_camera = this->create_subscription<msg::CompressedImage>("sensors/camera_0/compressed",
+																  rclcpp::SensorDataQoS().keep_last(1),
+																  std::bind(&VehicleComponent::on_camera,
+																			this, std::placeholders::_1));
 	_sub_planning = this->create_subscription<msg::Planning>("planning/trajectory", 1,
 															 std::bind(&VehicleComponent::on_planning,
 																	   this, std::placeholders::_1));
@@ -404,7 +404,7 @@ void VehicleComponent::on_point_cloud(const msg::PointCloud::ConstSharedPtr &pc)
 	_pc_stamp = robocar::utils::ros_to_unix_ms_time(pc->header.stamp);
 }
 
-void VehicleComponent::on_image(const msg::CompressedImage::ConstSharedPtr &img)
+void VehicleComponent::on_camera(const msg::CompressedImage::ConstSharedPtr &img)
 {
 	_camera_stamp = robocar::utils::ros_to_unix_ms_time(img->header.stamp);
 }

@@ -9,6 +9,8 @@
 #include "robocar/core/robocar.h"
 #include "robocar/simulation/sim_objects_agent.h"
 
+#include <visualization_msgs/msg/marker_array.hpp>
+
 namespace robocar
 {
     namespace simulation
@@ -23,6 +25,7 @@ namespace robocar
 
         private:
             uint64_t _prev_time = 0;
+            size_t _prev_nb_objects = 0;
             std::vector<std::shared_ptr<SimObjectAgent>> _agents;
             std::mutex _mtx;
             msg::Localization _loc;
@@ -30,9 +33,13 @@ namespace robocar
 
             // publisher
             rclcpp::Publisher<msg::Objects3d>::SharedPtr _pub_objects;
+            rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr _pub_objects_markers;
             // subscribers
             rclcpp::Subscription<msg::Localization>::SharedPtr _sub_loc;
             rclcpp::Subscription<msg::Path>::SharedPtr _sub_waypoints;
+
+            visualization_msgs::msg::MarkerArray get_objects_markers(const msg::Objects3d &objects,
+                                                                     size_t prev_nb_objects);
 
             void on_localization(const msg::Localization &loc);
             void on_waypoints(const msg::Path &waypoints);

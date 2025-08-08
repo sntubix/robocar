@@ -8,6 +8,8 @@
 
 #include "robocar/core/robocar.h"
 
+#include <tf2_ros/transform_broadcaster.h>
+
 namespace robocar
 {
 	namespace simulation
@@ -48,12 +50,15 @@ namespace robocar
 			double _v = 0.0;
 			double _accel = 0.0;
 
+			// transform
+			std::shared_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
+
 			// publishers
 			rclcpp::Publisher<msg::ActStatus>::SharedPtr _pub_act_status;
 			rclcpp::Publisher<msg::Localization>::SharedPtr _pub_loc;
 			rclcpp::Publisher<msg::GNSS>::SharedPtr _pub_gnss;
 			rclcpp::Publisher<msg::PointCloud>::SharedPtr _pub_pc;
-			rclcpp::Publisher<msg::CompressedImage>::SharedPtr _pub_c_img;
+			rclcpp::Publisher<msg::CompressedImage>::SharedPtr _pub_cam;
 			// subscribers
 			rclcpp::Subscription<msg::ActToggle>::SharedPtr _sub_act_toggle;
 			rclcpp::Subscription<msg::ActCmd>::SharedPtr _sub_act_cmd;

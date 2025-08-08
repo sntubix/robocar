@@ -101,7 +101,7 @@ MPPI::MPPI(Params params)
     _context = clCreateContext(NULL, 1, &_device, NULL, NULL, &ret);
     if (ret != CL_SUCCESS)
         throw std::runtime_error("unable to create an OpenCL context");
-    _queue = clCreateCommandQueue(_context, _device, 0, &ret);
+    _queue = clCreateCommandQueueWithProperties(_context, _device, NULL, &ret);
     if (ret != CL_SUCCESS)
         throw std::runtime_error("unable to create an OpenCL queue");
 

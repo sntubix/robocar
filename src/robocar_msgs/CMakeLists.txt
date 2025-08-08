@@ -22,7 +22,6 @@ rosidl_generate_interfaces(
     "msg/Object3d.msg"
     "msg/Objects2d.msg"
     "msg/Objects3d.msg"
-    "msg/ObjectsCircles.msg"
     "msg/Path.msg"
     "msg/Planning.msg"
     "msg/TargetSpeed.msg"

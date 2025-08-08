@@ -90,7 +90,7 @@
             "lidar_timeout": 1000,
             "camera_timeout": 500,
             "planning_timeout": 500,
-            "input_timeout": 1000,
+            "input_timeout": 500,
             "act_smoothing": 0.33,
             "steering_safety_speed": 0.389,
             "steering_safety_window": 5,
@@ -103,18 +103,17 @@
             "steering_ratio": 15.7,
             "steering_speed": 0.356
         },
-        "alexa_component": {
-            "groups": [],
-            "period": 500,
-            "serial_port": "/dev/ttyUSB0"
-        },
         "camera_component": {
-            "groups": ["default"],
+            "groups": ["default", "tod"],
             "period": 30,
-            "device_id": 0,
-            "width": 800,
-            "height": 450,
-            "flip": true
+            "cam_0_id": 0,
+            "cam_0_width": 1280,
+            "cam_0_height": 720,
+            "cam_0_flip": true,
+            "cam_1_id": -1,
+            "cam_1_width": 640,
+            "cam_1_height": 360,
+            "cam_1_flip": false
         },
         "joystick_component": {
             "groups": [],
@@ -143,9 +142,15 @@
         "tod_component": {
             "groups": ["sim", "tod"],
             "period": 10,
+            "speed_limiter_threshold": 0.95,
+            "speed_limiter_smoothing": 0.75,
             "max_steering": 0.57,
             "max_throttle": 0.6,
-            "max_brake": 0.4
+            "max_brake": 0.5,
+            "stream_width": 1280,
+            "stream_height": 720,
+            "stream_framerate": 30,
+            "stream_bitrate": 5000
         },
         "sim_vehicle_component": {
             "groups": ["sim"],
@@ -193,10 +198,12 @@
             "static_max_dist": 100.0
         },
         "localization_component": {
-            "groups": ["default", "tod"]
+            "groups": ["default"]
         },
         "map_component": {
-            "groups": ["default", "sim", "tod"],
+            "groups": ["default", "sim"],
+            "map_geofeatures": "src/robocar/maps/belval_geofeatures.geojson",
+            "map_virtual_geofeatures": "src/robocar/maps/belval_virtual_geofeatures.geojson",
             "waypoints_length": 15,
             "waypoints_interdistance": 0.3,
             "waypoints_interdistance_max": 15.0,
@@ -208,15 +215,10 @@
             "period": 500,
             "waypoints_interval": 1.0
         },
-        "visualization_component": {
+        "hmi_component": {
             "groups": ["default", "sim", "tod"],
-            "vehicle_mesh": "src/robocar/mesh/low_poly_car.fbx",
-            "map_geofeatures": "src/robocar/maps/belval_geofeatures.geojson",
-            "map_virtual_geofeatures": "src/robocar/maps/belval_virtual_geofeatures.geojson"
-        },
-        "dashboard_component": {
-            "groups": ["default", "sim", "tod"],
-            "rviz_config": "src/robocar/config/robocar.rviz"
+            "rviz_config": "src/robocar/config/robocar.rviz",
+            "vehicle_mesh": "src/robocar/mesh/low_poly_car.fbx"
         },
         "logging_component": {
             "groups": ["default", "sim"],

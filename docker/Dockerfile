@@ -1,26 +1,28 @@
-FROM docker.io/ros:humble
+FROM docker.io/ros:jazzy
 
 # install tools and libraries
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
-    vim git ffmpeg clang gcc gdb cmake python3-pip libzmq3-dev \
-    rapidjson-dev libeigen3-dev libopencv-dev libsdl2-dev libserial-dev \
-    opencl-headers ocl-icd-opencl-dev intel-opencl-icd
+    vim git ffmpeg clang gdb cmake python3-pip python3-venv rapidjson-dev \
+    libzmq3-dev libeigen3-dev libopencv-dev libomp-dev libpcap-dev libsdl2-dev \
+    opencl-headers ocl-icd-opencl-dev intel-opencl-icd libgstreamer1.0-dev \
+    libgstrtspserver-1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly
 RUN update-alternatives --set c++ /usr/bin/clang++
 
 # install ROS components
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
-    ros-humble-common-interfaces ros-humble-rviz2 ros-humble-pcl-ros \
-    ros-humble-cv-bridge ros-humble-image-transport-plugins
+    ros-jazzy-common-interfaces ros-jazzy-rviz2 ros-jazzy-pcl-ros \
+    ros-jazzy-cv-bridge ros-jazzy-image-transport-plugins
 
 # install python libraries
-RUN pip install ultralytics pygame pyzmq vidgear
+RUN python3 -m venv /venv
+RUN /venv/bin/pip install ultralytics pygame pyzmq vidgear
+RUN /venv/bin/pip install catkin_pkg empy lark
+ENV PATH="/venv/bin:$PATH"
 
-# clear tmp files and cache
-RUN rm -rf /tmp/libs && rm -rf /var/lib/apt/lists/*
+# clear cache
+RUN rm -rf /var/lib/apt/lists/*
 
-# create robocar user
-RUN useradd -s /bin/bash -m robocar
-
-USER robocar
+USER ubuntu
 WORKDIR /ws
 ENTRYPOINT ["bash"]

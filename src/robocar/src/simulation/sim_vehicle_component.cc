@@ -5,6 +5,8 @@
 
 #include "robocar/simulation/sim_vehicle_component.h"
 
+#include <tf2/LinearMath/Quaternion.h>
+
 namespace robocar
 {
 	namespace simulation
@@ -103,14 +105,17 @@ namespace robocar
 			_loc.sigma_x = 0.0;
 			_loc.sigma_y = 0.0;
 
+			// transform
+			_tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(*this);
+
 			// publishers
 			_pub_act_status = this->create_publisher<msg::ActStatus>("actuator/status", 1);
 			_pub_loc = this->create_publisher<msg::Localization>("localization/position", 1);
 			_pub_gnss = this->create_publisher<msg::GNSS>("sensors/gnss", 1);
 			_pub_pc = this->create_publisher<msg::PointCloud>("sensors/lidar/points",
 															  rclcpp::SensorDataQoS().keep_last(1));
-			_pub_c_img = this->create_publisher<msg::CompressedImage>("sensors/camera/compressed",
-																	  rclcpp::SensorDataQoS().keep_last(1));
+			_pub_cam = this->create_publisher<msg::CompressedImage>("sensors/camera_0/compressed",
+																	rclcpp::SensorDataQoS().keep_last(1));
 
 			// subscribers
 			_sub_act_toggle = this->create_subscription<msg::ActToggle>("actuator/toggle", 1,
@@ -127,7 +132,7 @@ namespace robocar
 
 			if (_act_status.ad_engaged)
 			{
-				//TODO improve vehicle model
+				// TODO improve vehicle model
 
 				_accel = 0.0;
 
@@ -212,10 +217,29 @@ namespace robocar
 			_loc.accel = _accel;
 			_pub_loc->publish(_loc);
 
+			// init quaternion from yaw
+			tf2::Quaternion quaternion;
+			quaternion.setRPY(0, 0, _loc.yaw);
+
+			// publish transform
+			geometry_msgs::msg::TransformStamped tf_stamped;
+			tf_stamped.header.stamp = _loc.header.stamp;
+			tf_stamped.header.frame_id = "map";
+			tf_stamped.child_frame_id = "vehicle";
+			tf_stamped.transform.translation.x = _loc.x;
+			tf_stamped.transform.translation.y = _loc.y;
+			tf_stamped.transform.translation.z = 0.0;
+			tf_stamped.transform.rotation.x = quaternion.x();
+			tf_stamped.transform.rotation.y = quaternion.y();
+			tf_stamped.transform.rotation.z = quaternion.z();
+			tf_stamped.transform.rotation.w = quaternion.w();
+			_tf_broadcaster->sendTransform(tf_stamped);
+
 			// publish virtual GNSS
 			msg::GNSS gnss;
 			gnss.header.stamp = now;
 			gnss.header.frame_id = "vehicle";
+			gnss.velocity = _v;
 			gnss.sigma_x = 0.0;
 			gnss.sigma_y = 0.0;
 			_pub_gnss->publish(gnss);
@@ -230,7 +254,7 @@ namespace robocar
 			msg::CompressedImage img_msg;
 			img_msg.header.stamp = now;
 			img_msg.header.frame_id = "vehicle";
-			_pub_c_img->publish(img_msg);
+			_pub_cam->publish(img_msg);
 		}
 
 		void SimVehicleComponent::on_act_toggle(const msg::ActToggle &act_toggle)

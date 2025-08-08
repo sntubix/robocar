@@ -11,6 +11,8 @@
 
 #include <deque>
 
+#include <visualization_msgs/msg/marker_array.hpp>
+
 namespace robocar
 {
 	namespace planning
@@ -56,6 +58,8 @@ namespace robocar
 			double _prev_obdv_sum = 0.0;
 			std::deque<double> _prev_obdv;
 
+			size_t _prev_nb_circles = 0;
+
 			std::mutex _mtx;
 			double _vehicle_steering = 0.0;
 			msg::Localization _loc;
@@ -63,11 +67,15 @@ namespace robocar
 			msg::Objects3d _objects3d;
 			msg::Objects2d _objects2d;
 			msg::TrafficLight _tfl_input;
+			// markers
+			visualization_msgs::msg::Marker _trajectory_marker;
+			visualization_msgs::msg::MarkerArray _circles_markers;
 
 			// publishers
 			rclcpp::Publisher<msg::Planning>::SharedPtr _pub_trajectory;
-			rclcpp::Publisher<msg::ObjectsCircles>::SharedPtr _pub_objects_circles;
 			rclcpp::Publisher<msg::Object3d>::SharedPtr _pub_tfl;
+			rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr _pub_trajectory_marker;
+			rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr _pub_obj_circles_markers;
 			// subscribers
 			rclcpp::Subscription<msg::Vehicle>::SharedPtr _sub_status;
 			rclcpp::Subscription<msg::Localization>::SharedPtr _sub_loc;
@@ -85,9 +93,11 @@ namespace robocar
 											const msg::Object3d &p_tfl,
 											const msg::Object3d &n_tfl);
 
-			std::vector<float> get_object_circles(const msg::Localization &loc,
-												  const msg::Objects3d &objects,
-												  const msg::Path &waypoints);
+			std::vector<float> get_objects_circles(const msg::Localization &loc,
+												   const msg::Objects3d &objects,
+												   const msg::Path &waypoints);
+			visualization_msgs::msg::MarkerArray get_obj_circles_markers(const std::vector<float> &objects_circles,
+																		 const msg::Localization &loc);
 
 			double dir_obj_dist(double x, double y, double yaw,
 								double obj_x, double obj_y, double obj_r);

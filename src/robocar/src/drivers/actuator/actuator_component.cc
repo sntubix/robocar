@@ -40,35 +40,46 @@ namespace robocar::drivers::actuator
 	static void fault_callback(oscc_fault_report_s *report);
 	static void obd_callback(struct can_frame *frame);
 
-	static inline double get_wheel_speed(struct can_frame const *const frame, const size_t offset)
-	{
-		if (frame == nullptr)
-			return OSCC_ERROR;
-		if (frame->can_id != KIA_SOUL_OBD_WHEEL_SPEED_CAN_ID)
-			return OSCC_ERROR;
-		uint16_t raw = ((frame->data[offset + 1] & 0x0F) << 8) | frame->data[offset];
-		return ((int)(raw / 3.2) / 10.0);
-	}
-
 	static inline double get_steering_wheel_angle(struct can_frame const *const frame)
 	{
 		if (frame == nullptr)
+		{
 			return OSCC_ERROR;
+		}
 		if (frame->can_id != KIA_SOUL_OBD_STEERING_WHEEL_ANGLE_CAN_ID)
+		{
 			return OSCC_ERROR;
+		}
 		int16_t raw = (frame->data[1] << 8) | frame->data[0];
 		return ((double)raw * KIA_SOUL_OBD_STEERING_ANGLE_SCALAR);
+	}
+
+	static inline double get_wheel_speed(struct can_frame const *const frame, const size_t offset)
+	{
+		if (frame == nullptr)
+		{
+			return OSCC_ERROR;
+		}
+		if (frame->can_id != KIA_SOUL_OBD_WHEEL_SPEED_CAN_ID)
+		{
+			return OSCC_ERROR;
+		}
+		uint16_t raw = ((frame->data[offset + 1] & 0x0F) << 8) | frame->data[offset];
+		return ((int)(raw / 3.2) / 10.0);
 	}
 
 	static inline double get_brake_pressure(struct can_frame const *const frame)
 	{
 		if (frame == nullptr)
+		{
 			return OSCC_ERROR;
+		}
 		if (frame->can_id != KIA_SOUL_OBD_BRAKE_PRESSURE_CAN_ID)
+		{
 			return OSCC_ERROR;
-		double scale = 10.0;
+		}
 		uint16_t raw = ((frame->data[5] & 0x0F) << 8) | frame->data[4];
-		return (double)raw / scale;
+		return (double)raw / 10.0;
 	}
 
 	static void steering_callback(oscc_steering_report_s *report)
@@ -110,22 +121,6 @@ namespace robocar::drivers::actuator
 		}
 	}
 
-	static double median(std::vector<double> &v)
-	{
-		size_t n = v.size() / 2;
-		std::nth_element(v.begin(), v.begin() + n, v.end());
-		double vn = v[n];
-		if (v.size() % 2 == 1)
-		{
-			return vn;
-		}
-		else
-		{
-			std::nth_element(v.begin(), v.begin() + n - 1, v.end());
-			return 0.5 * (vn + v[n - 1]);
-		}
-	}
-
 	static void obd_callback(struct can_frame *frame)
 	{
 		auto now = robocar::Time::now().ms();
@@ -144,7 +139,7 @@ namespace robocar::drivers::actuator
 			_vel[1] = get_wheel_speed(frame, 2); // front right
 			_vel[2] = get_wheel_speed(frame, 4); // rear left
 			_vel[3] = get_wheel_speed(frame, 6); // rear right
-			_speed = median(_vel);
+			_speed = (_vel[0] + _vel[1] + _vel[2] + _vel[3]) / 4.0;
 			break;
 		}
 		case KIA_SOUL_OBD_BRAKE_PRESSURE_CAN_ID:

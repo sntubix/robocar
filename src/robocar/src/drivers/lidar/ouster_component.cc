@@ -87,7 +87,7 @@ void OusterComponent::serve()
                                _os_info.format.udp_profile_lidar);
         auto xyz_lut = ouster::make_xyz_lut(_os_info);
 
-        while (this->is_running())
+        while (this->is_active())
         {
             // wait until sensor data is available
             ouster::sensor::client_state st = ouster::sensor::poll_client(*_os_client);

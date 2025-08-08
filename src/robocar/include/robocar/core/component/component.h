@@ -68,6 +68,11 @@ namespace robocar
 			}
 		}
 
+		bool is_active()
+		{
+			return _run;
+		}
+
 		bool is_running()
 		{
 			auto lock = std::unique_lock<std::mutex>(_mtx);

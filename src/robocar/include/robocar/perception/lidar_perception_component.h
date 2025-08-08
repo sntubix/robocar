@@ -17,6 +17,8 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/features/moment_of_inertia_estimation.h>
 
+#include <visualization_msgs/msg/marker_array.hpp>
+
 namespace robocar::perception
 {
 	class LidarPerceptionComponent : public robocar::Component
@@ -42,12 +44,17 @@ namespace robocar::perception
 		pcl::EuclideanClusterExtraction<pcl::PointXYZI> _ec;
 		pcl::MomentOfInertiaEstimation<pcl::PointXYZI> _moi;
 		std::unique_ptr<GroundSegmentation> _ground_segmentation;
+		size_t _prev_nb_objects = 0;
 
 		// publishers
 		rclcpp::Publisher<msg::PointCloud>::SharedPtr _pub_non_ground;
 		rclcpp::Publisher<msg::Objects3d>::SharedPtr _pub_objects3d;
+		rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr _pub_objects3d_markers;
 		// subscriber
 		rclcpp::Subscription<msg::PointCloud>::SharedPtr _sub_point_cloud;
+
+		visualization_msgs::msg::MarkerArray get_objects_markers(const msg::Objects3d &objects,
+																 size_t prev_nb_objects);
 
 		void on_point_cloud(msg::PointCloud pc);
 	};

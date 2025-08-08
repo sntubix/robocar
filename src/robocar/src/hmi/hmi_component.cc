@@ -3,16 +3,21 @@
  * Copyright (c) 2024 University of Luxembourg
  */
 
-#include "robocar/visualization/dashboard_component.h"
-
-#include <rviz_common/ros_integration/ros_node_abstraction.hpp>
+#include "robocar/hmi/hmi_component.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
-using namespace robocar::visualization;
+#include <filesystem>
 
-DashboardComponent::DashboardComponent(const robocar::Params &params, QApplication *qt_app, QWidget *parent)
+#include <cv_bridge/cv_bridge.hpp>
+#include <rviz_common/ros_integration/ros_node_abstraction.hpp>
+
+#include <opencv2/opencv.hpp>
+
+using namespace robocar::hmi;
+
+HMIComponent::HMIComponent(const robocar::Params &params, QApplication *qt_app, QWidget *parent)
     : QWidget(parent), robocar::Component(params), _qt_app(qt_app)
 {
     // params
@@ -21,6 +26,7 @@ DashboardComponent::DashboardComponent(const robocar::Params &params, QApplicati
     {
         throw std::invalid_argument("invalid rviz configuration file: '" + rviz_config + "'");
     }
+    _vehicle_mesh = "file://" + std::filesystem::canonical(params.get("vehicle_mesh").to_string()).string();
 
     // init actuation input
     _act_input.header.stamp = this->get_clock()->now();
@@ -29,29 +35,60 @@ DashboardComponent::DashboardComponent(const robocar::Params &params, QApplicati
     _act_input.throttle = 0.0;
     _act_input.brake = 0.0;
 
+    // vehicle marker
+    _vehicle_marker.id = 0;
+    _vehicle_marker.header.stamp = this->get_clock()->now();
+    _vehicle_marker.header.frame_id = "vehicle";
+    _vehicle_marker.lifetime = rclcpp::Duration(0, 0);
+    _vehicle_marker.action = visualization_msgs::msg::Marker::ADD;
+    _vehicle_marker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
+    _vehicle_marker.mesh_use_embedded_materials = true;
+    _vehicle_marker.mesh_resource = _vehicle_mesh;
+    _vehicle_marker.scale.x = 0.006;
+    _vehicle_marker.scale.y = 0.006;
+    _vehicle_marker.scale.z = 0.006;
+    _vehicle_marker.pose.orientation.x = 0.5;
+    _vehicle_marker.pose.orientation.y = 0.5;
+    _vehicle_marker.pose.orientation.z = 0.5;
+    _vehicle_marker.pose.orientation.w = 0.5;
+
     // publishers
     _pub_ad_toggle = this->create_publisher<msg::AdToggle>("vehicle/ad_toggle", 1);
     _pub_input = this->create_publisher<msg::ActCmd>("vehicle/input", 1);
     _pub_tfl = this->create_publisher<msg::TrafficLight>("planning/traffic_light/input", 1);
     _pub_mapping_toggle = this->create_publisher<msg::Mapping>("mapping/toggle", 1);
+
+    // rviz publishers
+    _pub_vehicle_marker = this->create_publisher<visualization_msgs::msg::Marker>("viz/vehicle/mesh", 1);
+    _pub_camera = this->create_publisher<msg::Image>("viz/perception/camera/objects2d", rclcpp::SensorDataQoS().keep_last(1));
+
     // subscribers
     _sub_vehicle = this->create_subscription<msg::Vehicle>("vehicle/status", 1,
-                                                           std::bind(&DashboardComponent::on_vehicle,
+                                                           std::bind(&HMIComponent::on_vehicle,
                                                                      this, std::placeholders::_1));
     _sub_planning = this->create_subscription<msg::Planning>("planning/trajectory", 1,
-                                                             std::bind(&DashboardComponent::on_trajectory,
+                                                             std::bind(&HMIComponent::on_planning,
                                                                        this, std::placeholders::_1));
     _sub_tfl = this->create_subscription<msg::Object3d>("planning/traffic_light", 1,
-                                                        std::bind(&DashboardComponent::on_traffic_light,
+                                                        std::bind(&HMIComponent::on_traffic_light,
                                                                   this, std::placeholders::_1));
     _sub_act_cmd = this->create_subscription<msg::ActCmd>("actuator/command", 1,
-                                                          std::bind(&DashboardComponent::on_act_cmd,
+                                                          std::bind(&HMIComponent::on_act_cmd,
                                                                     this, std::placeholders::_1));
     _sub_loc = this->create_subscription<msg::Localization>("localization/position", 1,
-                                                            std::bind(&DashboardComponent::on_localization,
+                                                            std::bind(&HMIComponent::on_localization,
                                                                       this, std::placeholders::_1));
     _sub_mapping_status = this->create_subscription<msg::Mapping>("mapping/status", 1,
-                                                                  std::bind(&DashboardComponent::on_mapping_status,
+                                                                  std::bind(&HMIComponent::on_mapping_status,
+                                                                            this, std::placeholders::_1));
+
+    // rviz subscribers
+    _sub_objects2d = this->create_subscription<msg::Objects2d>("perception/camera/objects2d", 1,
+                                                               std::bind(&HMIComponent::on_objects2d,
+                                                                         this, std::placeholders::_1));
+    _sub_camera = this->create_subscription<msg::CompressedImage>("sensors/camera_0/compressed",
+                                                                  rclcpp::SensorDataQoS().keep_last(1),
+                                                                  std::bind(&HMIComponent::on_camera,
                                                                             this, std::placeholders::_1));
 
     // main window
@@ -92,13 +129,13 @@ DashboardComponent::DashboardComponent(const robocar::Params &params, QApplicati
     _ad_status->setStyleSheet("font: 14pt; color: rgb(0, 0, 0)");
     _ad_status->setAlignment(Qt::AlignCenter);
     left_status->layout()->addWidget(_ad_status);
-    connect(this, &DashboardComponent::vehicle_changed, this, &DashboardComponent::on_vehicle_changed);
+    connect(this, &HMIComponent::vehicle_changed, this, &HMIComponent::on_vehicle_changed);
     // mapping status
     _mapping_status = new QLabel("MAPPING", left_status);
     _mapping_status->setStyleSheet("font: 14pt; color: rgb(0, 0, 0)");
     _mapping_status->setAlignment(Qt::AlignCenter);
     left_status->layout()->addWidget(_mapping_status);
-    connect(this, &DashboardComponent::mapping_status_changed, this, &DashboardComponent::on_mapping_status_changed);
+    connect(this, &HMIComponent::mapping_status_changed, this, &HMIComponent::on_mapping_status_changed);
 
     // right status panel
     auto right_status = new QWidget(status_panel);
@@ -174,7 +211,7 @@ DashboardComponent::DashboardComponent(const robocar::Params &params, QApplicati
     _planning->setStyleSheet("font: 18pt; color: rgb(255, 255, 255)");
     _planning->setAlignment(Qt::AlignCenter);
     center_panel->layout()->addWidget(_planning);
-    connect(this, &DashboardComponent::planning_changed, this, &DashboardComponent::on_planning_changed);
+    connect(this, &HMIComponent::planning_changed, this, &HMIComponent::on_planning_changed);
 
     // speed panel
     auto speed_panel = new QWidget(center_panel);
@@ -185,7 +222,7 @@ DashboardComponent::DashboardComponent(const robocar::Params &params, QApplicati
     _speed->setStyleSheet("font: 17pt; color: rgb(255, 255, 255)");
     _speed->setAlignment(Qt::AlignCenter);
     speed_panel->layout()->addWidget(_speed);
-    connect(this, &DashboardComponent::localization_changed, this, &DashboardComponent::on_localization_changed);
+    connect(this, &HMIComponent::localization_changed, this, &HMIComponent::on_localization_changed);
     // speed unit
     auto speed_unit = new QLabel("km/h", speed_panel);
     speed_unit->setStyleSheet("font: 9pt; color: rgb(255, 255, 255)");
@@ -196,7 +233,7 @@ DashboardComponent::DashboardComponent(const robocar::Params &params, QApplicati
     auto traffic_light_panel = new QWidget(info_panel);
     traffic_light_panel->setLayout(new QVBoxLayout(traffic_light_panel));
     info_panel->layout()->addWidget(traffic_light_panel);
-    connect(this, &DashboardComponent::traffic_light_changed, this, &DashboardComponent::on_traffic_light_changed);
+    connect(this, &HMIComponent::traffic_light_changed, this, &HMIComponent::on_traffic_light_changed);
     // traffic light label
     auto traffic_light_l = new QLabel("TRAFFIC LIGHT", traffic_light_panel);
     traffic_light_l->setStyleSheet("color: rgb(255, 255, 255)");
@@ -222,7 +259,7 @@ DashboardComponent::DashboardComponent(const robocar::Params &params, QApplicati
     auto actuation_panel = new QWidget(dash_panel);
     actuation_panel->setLayout(new QVBoxLayout(actuation_panel));
     dash_layout->addWidget(actuation_panel, 33);
-    connect(this, &DashboardComponent::actuation_changed, this, &DashboardComponent::on_actuation_changed);
+    connect(this, &HMIComponent::actuation_changed, this, &HMIComponent::on_actuation_changed);
 
     // command panel
     auto command_panel = new QWidget(actuation_panel);
@@ -297,8 +334,12 @@ DashboardComponent::DashboardComponent(const robocar::Params &params, QApplicati
     this->show();
 }
 
-void DashboardComponent::serve()
+void HMIComponent::serve()
 {
+    // publish vehicle marker
+    _vehicle_marker.header.stamp = this->get_clock()->now();
+    _pub_vehicle_marker->publish(_vehicle_marker);
+
     std::unique_lock<std::mutex> lock(_m_ai);
     if ((_act_input.mode == ACT_OVERRIDE_PARTIAL) || (_prev_act_mode == ACT_OVERRIDE_PARTIAL))
     {
@@ -308,7 +349,7 @@ void DashboardComponent::serve()
     _prev_act_mode = _act_input.mode;
 }
 
-void DashboardComponent::on_vehicle(const msg::Vehicle &vehicle)
+void HMIComponent::on_vehicle(const msg::Vehicle &vehicle)
 {
     _ad_engaged = vehicle.ad_engaged;
     emit vehicle_changed(vehicle.ad_engaged, vehicle.steering_status,
@@ -316,36 +357,36 @@ void DashboardComponent::on_vehicle(const msg::Vehicle &vehicle)
                          vehicle.gnss, vehicle.lidar, vehicle.camera);
 }
 
-void DashboardComponent::on_localization(const msg::Localization &loc)
+void HMIComponent::on_localization(const msg::Localization &loc)
 {
     emit localization_changed(loc.x, loc.y, loc.pitch, loc.yaw, loc.vel * 3.6);
 }
 
-void DashboardComponent::on_trajectory(const msg::Planning &trajectory)
+void HMIComponent::on_planning(const msg::Planning &planning)
 {
-    emit planning_changed(trajectory.state, trajectory.target_velocity * 3.6,
-                          trajectory.obstacle_type);
+    emit planning_changed(planning.state, planning.target_velocity * 3.6,
+                          planning.obstacle_type);
 }
 
-void DashboardComponent::on_traffic_light(const msg::Object3d &tfl)
+void HMIComponent::on_traffic_light(const msg::Object3d &tfl)
 {
     emit traffic_light_changed(tfl.type);
 }
 
-void DashboardComponent::on_act_cmd(const msg::ActCmd &act_cmd)
+void HMIComponent::on_act_cmd(const msg::ActCmd &act_cmd)
 {
     emit actuation_changed(act_cmd.mode, act_cmd.steering * 180.0 / M_PI,
                            act_cmd.throttle, act_cmd.brake);
 }
 
-void DashboardComponent::on_mapping_status(const msg::Mapping &mapping)
+void HMIComponent::on_mapping_status(const msg::Mapping &mapping)
 {
     _mapping = mapping.status;
     emit mapping_status_changed(mapping.status);
 }
 
-void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int throttle,
-                                            int brake, int gnss, int lidar, int camera)
+void HMIComponent::on_vehicle_changed(bool ad_engaged, int steering, int throttle,
+                                      int brake, int gnss, int lidar, int camera)
 {
     if (_ad_engaged)
         _ad_status->setStyleSheet("font: 14pt; color: rgb(0, 255, 0)");
@@ -362,8 +403,7 @@ void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int t
         _vehicle_status->setStyleSheet("color: rgb(255, 0, 0)");
         _vehicle_status->setText("ERROR");
     }
-    else if ((steering == STATUS_WARNING) || (throttle == STATUS_WARNING)
-             || (brake == STATUS_WARNING))
+    else if ((steering == STATUS_WARNING) || (throttle == STATUS_WARNING) || (brake == STATUS_WARNING))
     {
         _vehicle_status->setStyleSheet("color: rgb(255, 127, 0)");
         _vehicle_status->setText("WARN");
@@ -397,9 +437,7 @@ void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int t
         _perception_status->setStyleSheet("color: rgb(0, 255, 0)");
         _perception_status->setText("OK");
     }
-    else if (((lidar == STATUS_WARNING) && (camera == STATUS_OK))
-             || ((lidar == STATUS_OK) && (camera == STATUS_WARNING))
-             || ((lidar == STATUS_WARNING) && (camera == STATUS_WARNING)))
+    else if (((lidar == STATUS_WARNING) && (camera == STATUS_OK)) || ((lidar == STATUS_OK) && (camera == STATUS_WARNING)) || ((lidar == STATUS_WARNING) && (camera == STATUS_WARNING)))
     {
         _perception_status->setStyleSheet("color: rgb(255, 127, 0)");
         _perception_status->setText("WARN");
@@ -411,7 +449,7 @@ void DashboardComponent::on_vehicle_changed(bool ad_engaged, int steering, int t
     }
 }
 
-void DashboardComponent::on_mapping_status_changed(bool mapping)
+void HMIComponent::on_mapping_status_changed(bool mapping)
 {
     if (mapping)
     {
@@ -423,14 +461,14 @@ void DashboardComponent::on_mapping_status_changed(bool mapping)
     }
 }
 
-void DashboardComponent::on_localization_changed(double x, double y, double pitch,
-                                                 double yaw, double speed)
+void HMIComponent::on_localization_changed(double x, double y, double pitch,
+                                           double yaw, double speed)
 {
-    auto speed_str = robocar::utils::round_str((speed), 0);
+    auto speed_str = robocar::utils::round_str(speed, 0);
     _speed->setText(speed_str.c_str());
 }
 
-void DashboardComponent::on_planning_changed(int state, double target_speed, int obstacle_type)
+void HMIComponent::on_planning_changed(int state, double target_speed, int obstacle_type)
 {
     if (state == STATE_STANDBY)
     {
@@ -455,11 +493,11 @@ void DashboardComponent::on_planning_changed(int state, double target_speed, int
             _planning->setText("KEEP DIST");
         }
     }
-    auto speed_limit_str = robocar::utils::round_str((target_speed), 0);
+    auto speed_limit_str = robocar::utils::round_str(target_speed, 0);
     _speed_limit->setText(speed_limit_str.c_str());
 }
 
-void DashboardComponent::on_traffic_light_changed(int status)
+void HMIComponent::on_traffic_light_changed(int status)
 {
     if (status == robocar::OBJ_NONE)
     {
@@ -493,7 +531,7 @@ void DashboardComponent::on_traffic_light_changed(int status)
     }
 }
 
-void DashboardComponent::on_actuation_changed(int mode, double steering, double throttle, double brake)
+void HMIComponent::on_actuation_changed(int mode, double steering, double throttle, double brake)
 {
     auto steering_str = robocar::utils::round_str(steering, 2);
     _steering->setText(steering_str.c_str());
@@ -502,37 +540,40 @@ void DashboardComponent::on_actuation_changed(int mode, double steering, double 
     auto brake_str = robocar::utils::round_str(brake, 2);
     _brake->setText(brake_str.c_str());
 
-    if (mode == ACT_OVERRIDE_NONE) {
+    if (mode == ACT_OVERRIDE_NONE)
+    {
         _override_none->setStyleSheet("color: rgb(0, 255, 0)");
         _override_partial->setStyleSheet("color: rgb(0, 0, 0)");
         _override_full->setStyleSheet("color: rgb(0, 0, 0)");
     }
-    if (mode == ACT_OVERRIDE_PARTIAL) {
+    if (mode == ACT_OVERRIDE_PARTIAL)
+    {
         _override_none->setStyleSheet("color: rgb(0, 0, 0)");
         _override_partial->setStyleSheet("color: rgb(255, 127, 0)");
         _override_full->setStyleSheet("color: rgb(0, 0, 0)");
     }
-    if (mode == ACT_OVERRIDE_FULL) {
+    if (mode == ACT_OVERRIDE_FULL)
+    {
         _override_none->setStyleSheet("color: rgb(0, 0, 0)");
         _override_partial->setStyleSheet("color: rgb(0, 0, 0)");
         _override_full->setStyleSheet("color: rgb(255, 127, 0)");
     }
 }
 
-void DashboardComponent::on_tfl_timer()
+void HMIComponent::on_tfl_timer()
 {
     std::unique_lock<std::mutex> lock(_m_tfl);
     _tfl_counter--;
     if (_tfl_counter < 1)
     {
         msg::TrafficLight tfl;
-        tfl.header.stamp = robocar::utils::unix_ms_to_ros_time(robocar::Time::now().ms());
+        tfl.header.stamp = this->get_clock()->now();
         tfl.type = OBJ_TFL_NONE;
         _pub_tfl->publish(tfl);
     }
 }
 
-void DashboardComponent::closeEvent(QCloseEvent *event)
+void HMIComponent::closeEvent(QCloseEvent *event)
 {
     msg::AdToggle ad_toggle;
     ad_toggle.toggle = false;
@@ -554,4 +595,57 @@ void DashboardComponent::closeEvent(QCloseEvent *event)
     }
     this->msg_robocar("shutdown");
     event->accept();
+}
+
+void HMIComponent::on_objects2d(const msg::Objects2d &objects)
+{
+    _m_o.lock();
+    _objects2d = objects;
+    _m_o.unlock();
+}
+
+void HMIComponent::on_camera(const msg::CompressedImage::ConstSharedPtr &image)
+{
+    // check image
+    if (image->format.empty() || image->data.empty())
+    {
+        return;
+    }
+
+    std::unique_lock<std::mutex> lock(_m_o);
+
+    // convert to cv image
+    auto cv_mat = cv_bridge::toCvCopy(*image, sensor_msgs::image_encodings::BGR8);
+
+    // draw objects
+    for (auto &obj : _objects2d.objects)
+    {
+        auto p1 = cv::Point(obj.x1, obj.y1);
+        auto p2 = cv::Point(obj.x2, obj.y2);
+
+        if (obj.type == OBJ_TFL_GREEN)
+        {
+            cv::rectangle(cv_mat->image, p1, p2, cv::Scalar(0, 255, 0), 2, cv::LINE_8);
+        }
+        if (obj.type == OBJ_TFL_YELLOW)
+        {
+            cv::rectangle(cv_mat->image, p1, p2, cv::Scalar(0, 255, 255), 2, cv::LINE_8);
+        }
+        if (obj.type == OBJ_TFL_RED)
+        {
+            cv::rectangle(cv_mat->image, p1, p2, cv::Scalar(0, 0, 255), 2, cv::LINE_8);
+        }
+        if (obj.type == OBJ_TFL_NONE)
+        {
+            cv::rectangle(cv_mat->image, p1, p2, cv::Scalar(255, 0, 0), 2, cv::LINE_8);
+        }
+    }
+
+    // convert to ROS msg
+    auto img_bridge = cv_bridge::CvImage(image->header,
+                                         sensor_msgs::image_encodings::BGR8,
+                                         cv_mat->image);
+    auto img = img_bridge.toImageMsg();
+
+    _pub_camera->publish(*img);
 }

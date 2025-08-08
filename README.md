@@ -56,20 +56,19 @@ External ROS2 nodes should be added and configured using [`robocar.launch.py`](.
 First, source using `source install/setup.sh`.<br>
 RoboCar can be run using ROS2 launch : `ros2 launch robocar robocar.launch.py`.
 
-Once RoboCar is running, pressing `SHIFT` will toggle autonomous driving (AD) mode, other basic commands can be found in the [`dashboard_component`](./src/robocar/include/robocar/visualization/dashboard_component.h).
+Once RoboCar is running, pressing `SHIFT` will toggle autonomous driving (AD) mode, other basic commands can be found in the [`hmi_component`](./src/robocar/include/robocar/hmi/hmi_component.h).
 Safety checks are implemented in the [`vehicle_component`](./src/robocar/src/vehicle/vehicle_component.cc) and they can prevent AD mode from engaging, refer to parameters and implementation to disable these checks.
 
 ## Citation
 If you find RoboCar useful or relevant for your research, please cite our paper:
 ```bibtex
-@ARTICLE{10924789,
-  author={Testouri, Mehdi and Elghazaly, Gamal and Frank, Raphael},
-  journal={IEEE Intelligent Transportation Systems Magazine}, 
-  title={RoboCar: A Rapidly Deployable Open Source Platform for Autonomous Driving Research}, 
-  year={2025},
-  pages={2-15},
-  keywords={Hardware;Cameras;Autonomous vehicles;Laser radar;Middleware;Computer architecture;Location awareness;Full stack;Automobiles;Urban areas},
-  doi={10.1109/MITS.2025.3546755}
+@article{testouri2024robocar,
+  title={RoboCar: A Rapidly Deployable Open-Source Platform for Autonomous Driving Research},
+  author={Mehdi Testouri and Gamal Elghazaly and Raphael Frank},
+  year={2024},
+  eprint={2405.03572},
+  archivePrefix={arXiv},
+  primaryClass={cs.RO}
 }
 ```
 

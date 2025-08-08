@@ -3,12 +3,10 @@
  * Copyright (c) 2024 University of Luxembourg
  */
 
-#ifndef ROBOCAR_VISUALIZATION_DASHBOARD_COMPONENT_H
-#define ROBOCAR_VISUALIZATION_DASHBOARD_COMPONENT_H
+#ifndef ROBOCAR_HMI_HMI_COMPONENT_H
+#define ROBOCAR_HMI_HMI_COMPONENT_H
 
 #include "robocar/core/robocar.h"
-
-#include <rviz_common/visualization_frame.hpp>
 
 #include <QApplication>
 #include <QWidget>
@@ -17,13 +15,16 @@
 #include <QInputDialog>
 #include <QTimer>
 
-namespace robocar::visualization
+#include <rviz_common/visualization_frame.hpp>
+#include <visualization_msgs/msg/marker.hpp>
+
+namespace robocar::hmi
 {
-    class DashboardComponent : public QWidget, public robocar::Component
+    class HMIComponent : public QWidget, public robocar::Component
     {
         Q_OBJECT
     public:
-        explicit DashboardComponent(const robocar::Params &params, QApplication *qt_app, QWidget *parent = 0);
+        explicit HMIComponent(const robocar::Params &params, QApplication *qt_app, QWidget *parent = 0);
 
         void serve() override;
 
@@ -46,8 +47,14 @@ namespace robocar::visualization
         void on_actuation_changed(int mode, double steering, double throttle, double brake);
 
     private:
+        // params
+        std::string _vehicle_mesh;
+
         bool _ad_engaged = false;
         bool _mapping = false;
+        visualization_msgs::msg::Marker _vehicle_marker;
+        std::mutex _m_o;
+        msg::Objects2d _objects2d;
 
         // input actuation
         std::mutex _m_ai;
@@ -89,6 +96,10 @@ namespace robocar::visualization
         rclcpp::Publisher<msg::ActCmd>::SharedPtr _pub_input;
         rclcpp::Publisher<msg::TrafficLight>::SharedPtr _pub_tfl;
         rclcpp::Publisher<msg::Mapping>::SharedPtr _pub_mapping_toggle;
+        // rviz publishers
+        rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr _pub_vehicle_marker;
+        rclcpp::Publisher<msg::Image>::SharedPtr _pub_camera;
+
         // subscribers
         rclcpp::Subscription<msg::Vehicle>::SharedPtr _sub_vehicle;
         rclcpp::Subscription<msg::Localization>::SharedPtr _sub_loc;
@@ -96,14 +107,20 @@ namespace robocar::visualization
         rclcpp::Subscription<msg::Object3d>::SharedPtr _sub_tfl;
         rclcpp::Subscription<msg::ActCmd>::SharedPtr _sub_act_cmd;
         rclcpp::Subscription<msg::Mapping>::SharedPtr _sub_mapping_status;
+        // rviz subscribers
+        rclcpp::Subscription<msg::Objects2d>::SharedPtr _sub_objects2d;
+        rclcpp::Subscription<msg::CompressedImage>::SharedPtr _sub_camera;
 
         void on_vehicle(const msg::Vehicle &vehicle);
         void on_localization(const msg::Localization &loc);
-        void on_trajectory(const msg::Planning &trajectory);
+        void on_planning(const msg::Planning &planning);
         void on_traffic_light(const msg::Object3d &tfl);
         void on_act_cmd(const msg::ActCmd &act_cmd);
         void on_mapping_status(const msg::Mapping &mapping);
         void on_tfl_timer();
+        // rviz callbacks
+        void on_objects2d(const msg::Objects2d &objects);
+        void on_camera(const msg::CompressedImage::ConstSharedPtr &image);
 
         void keyPressEvent(QKeyEvent *event) override
         {
@@ -233,7 +250,7 @@ namespace robocar::visualization
                     tfl.type = OBJ_TFL_NONE;
                     _pub_tfl->publish(tfl);
                     _tfl_counter++;
-                    QTimer::singleShot(10000, this, &DashboardComponent::on_tfl_timer);
+                    QTimer::singleShot(10000, this, &HMIComponent::on_tfl_timer);
                 }
                 if (event->key() == Qt::Key_G)
                 {
@@ -242,7 +259,7 @@ namespace robocar::visualization
                     tfl.type = OBJ_TFL_GREEN;
                     _pub_tfl->publish(tfl);
                     _tfl_counter++;
-                    QTimer::singleShot(10000, this, &DashboardComponent::on_tfl_timer);
+                    QTimer::singleShot(10000, this, &HMIComponent::on_tfl_timer);
                 }
                 if (event->key() == Qt::Key_Y)
                 {
@@ -251,7 +268,7 @@ namespace robocar::visualization
                     tfl.type = OBJ_TFL_YELLOW;
                     _pub_tfl->publish(tfl);
                     _tfl_counter++;
-                    QTimer::singleShot(10000, this, &DashboardComponent::on_tfl_timer);
+                    QTimer::singleShot(10000, this, &HMIComponent::on_tfl_timer);
                 }
                 if (event->key() == Qt::Key_R)
                 {
@@ -260,7 +277,7 @@ namespace robocar::visualization
                     tfl.type = OBJ_TFL_RED;
                     _pub_tfl->publish(tfl);
                     _tfl_counter++;
-                    QTimer::singleShot(10000, this, &DashboardComponent::on_tfl_timer);
+                    QTimer::singleShot(10000, this, &HMIComponent::on_tfl_timer);
                 }
                 lock_tfl.unlock();
             }
@@ -270,4 +287,4 @@ namespace robocar::visualization
     };
 }
 
-#endif // ROBOCAR_VISUALIZATION_DASHBOARD_COMPONENT_H
+#endif // ROBOCAR_HMI_HMI_COMPONENT_H

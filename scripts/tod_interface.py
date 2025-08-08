@@ -78,7 +78,7 @@ class TodInterface():
             input_conf['axis_steering'] = 0
             input_conf['axis_throttle'] = 2
             input_conf['axis_brake'] = 1
-            input_conf['cal_steering'] = 1.1
+            input_conf['cal_steering'] = 1.2
             input_conf['cal_throttle'] = 2.7
             input_conf['cal_brake'] = 2.5
             return input_conf
@@ -124,7 +124,6 @@ class TodInterface():
         prev_joy_ad = 0.0
         tod_engaged = False
         ad_engaged = False
-        ad_engage = False
 
         cmd = {
             'steering': 0.0,
@@ -176,6 +175,7 @@ class TodInterface():
                     tod_engaged = not tod_engaged
 
             if tod_engaged:
+                ad_engage = 2
                 steering = 0.0
                 throttle = 0.0
                 brake = 0.0
@@ -183,7 +183,10 @@ class TodInterface():
                 if use_joystick:
                     joy_ad = joystick.get_button(self._input_conf['button_ad'])
                     if (joy_ad == 0.0) and (prev_joy_ad == 1.0):
-                        ad_engage = not ad_engaged
+                        if ad_engaged:
+                            ad_engage = 0
+                        else:
+                            ad_engage = 1
                     prev_joy_ad = joy_ad
 
                     steering = (-joystick.get_axis(self._input_conf['axis_steering'])
@@ -209,11 +212,14 @@ class TodInterface():
 
                 else:
                     if kb_ad:
-                        ad_engage = not ad_engaged
+                        if ad_engaged:
+                            ad_engage = 0
+                        else:
+                            ad_engage = 1
                     if kb_steer_l:
-                        steering = 0.1
+                        steering = 0.2
                     if kb_steer_r:
-                        steering = -0.1
+                        steering = -0.2
                     if kb_throttle:
                         throttle = 0.4
                     if kb_brake:

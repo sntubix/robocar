@@ -64,7 +64,7 @@ namespace robocar::vehicle
 		rclcpp::Subscription<msg::ActCmd>::SharedPtr _sub_input;
 		rclcpp::Subscription<msg::GNSS>::SharedPtr _sub_gnss;
 		rclcpp::Subscription<msg::PointCloud>::SharedPtr _sub_pc;
-		rclcpp::Subscription<msg::CompressedImage>::SharedPtr _sub_image;
+		rclcpp::Subscription<msg::CompressedImage>::SharedPtr _sub_camera;
 		rclcpp::Subscription<msg::Planning>::SharedPtr _sub_planning;
 		rclcpp::Subscription<msg::ActCmd>::SharedPtr _sub_control;
 
@@ -74,7 +74,7 @@ namespace robocar::vehicle
 		void on_input(const msg::ActCmd &act_cmd);
 		void on_gnss(const msg::GNSS &gnss);
 		void on_point_cloud(const msg::PointCloud::ConstSharedPtr &pc);
-		void on_image(const msg::CompressedImage::ConstSharedPtr &img);
+		void on_camera(const msg::CompressedImage::ConstSharedPtr &img);
 		void on_planning(const msg::Planning &planning);
 		void on_control(const msg::ActCmd &act_cmd);
 	};

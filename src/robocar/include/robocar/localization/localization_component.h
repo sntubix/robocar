@@ -8,6 +8,8 @@
 
 #include "robocar/core/robocar.h"
 
+#include <tf2_ros/transform_broadcaster.h>
+
 namespace robocar::localization
 {
 	class LocalizationComponent : public robocar::Component
@@ -16,6 +18,9 @@ namespace robocar::localization
 		LocalizationComponent(const robocar::Params &params);
 
 	private:
+		// transform
+		std::shared_ptr<tf2_ros::TransformBroadcaster> _tf_broadcaster;
+
 		// publishers
 		rclcpp::Publisher<msg::Localization>::SharedPtr _pub_loc;
 		rclcpp::Publisher<msg::LogEntry>::SharedPtr _pub_log;

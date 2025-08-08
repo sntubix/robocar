@@ -68,6 +68,7 @@ namespace robocar
 
             // publisher
             _pub_objects = this->create_publisher<msg::Objects3d>("perception/lidar/objects3d", 1);
+            _pub_objects_markers = this->create_publisher<visualization_msgs::msg::MarkerArray>("viz/perception/lidar/objects3d", 2);
             // subscribers
             _sub_loc = this->create_subscription<msg::Localization>("localization/position", 1,
                                                                     std::bind(&SimObjectsComponent::on_localization,
@@ -132,6 +133,149 @@ namespace robocar
 
             // publish objects
             _pub_objects->publish(objects);
+
+            // publish objects markers
+            _pub_objects_markers->publish(get_objects_markers(objects, _prev_nb_objects));
+            _prev_nb_objects = objects.objects.size();
+        }
+
+        visualization_msgs::msg::MarkerArray SimObjectsComponent::get_objects_markers(const msg::Objects3d &objects,
+                                                                                      size_t prev_nb_objects)
+        {
+            auto now = this->get_clock()->now();
+            size_t nb_objects = objects.objects.size();
+            size_t max_nb_objects = std::max(prev_nb_objects, nb_objects);
+            visualization_msgs::msg::MarkerArray object_markers;
+
+            for (size_t i = 0; i < max_nb_objects; i++)
+            {
+                visualization_msgs::msg::Marker bbox;
+                bbox.id = i;
+                bbox.header.stamp = now;
+                bbox.header.frame_id = "vehicle";
+                bbox.ns = "objects3d";
+
+                if (i < nb_objects)
+                {
+                    auto &object = objects.objects[i];
+                    bbox.header = object.header;
+
+                    // create bbox
+                    geometry_msgs::msg::Point p[24];
+                    // ground area
+                    // p0 -> p1
+                    p[0].x = object.points[0].x;
+                    p[0].y = object.points[0].y;
+                    p[0].z = object.points[0].z;
+                    p[1].x = object.points[1].x;
+                    p[1].y = object.points[1].y;
+                    p[1].z = object.points[1].z;
+                    // p1 -> p2
+                    p[2].x = object.points[1].x;
+                    p[2].y = object.points[1].y;
+                    p[2].z = object.points[1].z;
+                    p[3].x = object.points[2].x;
+                    p[3].y = object.points[2].y;
+                    p[3].z = object.points[2].z;
+                    // p2 -> p3
+                    p[4].x = object.points[2].x;
+                    p[4].y = object.points[2].y;
+                    p[4].z = object.points[2].z;
+                    p[5].x = object.points[3].x;
+                    p[5].y = object.points[3].y;
+                    p[5].z = object.points[3].z;
+                    // p3 -> p0
+                    p[6].x = object.points[3].x;
+                    p[6].y = object.points[3].y;
+                    p[6].z = object.points[3].z;
+                    p[7].x = object.points[0].x;
+                    p[7].y = object.points[0].y;
+                    p[7].z = object.points[0].z;
+
+                    // top area
+                    // p4 -> p5
+                    p[8].x = object.points[4].x;
+                    p[8].y = object.points[4].y;
+                    p[8].z = object.points[4].z;
+                    p[9].x = object.points[5].x;
+                    p[9].y = object.points[5].y;
+                    p[9].z = object.points[5].z;
+                    // p5 -> p6
+                    p[10].x = object.points[5].x;
+                    p[10].y = object.points[5].y;
+                    p[10].z = object.points[5].z;
+                    p[11].x = object.points[6].x;
+                    p[11].y = object.points[6].y;
+                    p[11].z = object.points[6].z;
+                    // p6 -> p7
+                    p[12].x = object.points[6].x;
+                    p[12].y = object.points[6].y;
+                    p[12].z = object.points[6].z;
+                    p[13].x = object.points[7].x;
+                    p[13].y = object.points[7].y;
+                    p[13].z = object.points[7].z;
+                    // p7 -> p4
+                    p[14].x = object.points[7].x;
+                    p[14].y = object.points[7].y;
+                    p[14].z = object.points[7].z;
+                    p[15].x = object.points[4].x;
+                    p[15].y = object.points[4].y;
+                    p[15].z = object.points[4].z;
+
+                    // side areas
+                    // p0 -> p4
+                    p[16].x = object.points[0].x;
+                    p[16].y = object.points[0].y;
+                    p[16].z = object.points[0].z;
+                    p[17].x = object.points[4].x;
+                    p[17].y = object.points[4].y;
+                    p[17].z = object.points[4].z;
+                    // p3 -> p7
+                    p[18].x = object.points[3].x;
+                    p[18].y = object.points[3].y;
+                    p[18].z = object.points[3].z;
+                    p[19].x = object.points[7].x;
+                    p[19].y = object.points[7].y;
+                    p[19].z = object.points[7].z;
+                    // p2 -> p6
+                    p[20].x = object.points[2].x;
+                    p[20].y = object.points[2].y;
+                    p[20].z = object.points[2].z;
+                    p[21].x = object.points[6].x;
+                    p[21].y = object.points[6].y;
+                    p[21].z = object.points[6].z;
+                    // p1 -> p5
+                    p[22].x = object.points[1].x;
+                    p[22].y = object.points[1].y;
+                    p[22].z = object.points[1].z;
+                    p[23].x = object.points[5].x;
+                    p[23].y = object.points[5].y;
+                    p[23].z = object.points[5].z;
+
+                    // marker
+                    bbox.type = visualization_msgs::msg::Marker::LINE_LIST;
+                    bbox.scale.x = 0.2;
+                    bbox.color = std_msgs::msg::ColorRGBA();
+                    bbox.color.a = 1.0f;
+                    bbox.color.r = 0.2f;
+                    bbox.color.g = 0.6f;
+                    bbox.color.b = 1.0f;
+                    for (int j = 0; j < 24; ++j)
+                        bbox.points.push_back(p[j]);
+                    bbox.pose.orientation.x = 0;
+                    bbox.pose.orientation.y = 0;
+                    bbox.pose.orientation.z = 0;
+                    bbox.pose.orientation.w = 1;
+                }
+                else
+                {
+                    bbox.action = bbox.DELETE;
+                }
+
+                object_markers.markers.push_back(bbox);
+            }
+
+            return object_markers;
         }
 
         void SimObjectsComponent::on_localization(const msg::Localization &loc)

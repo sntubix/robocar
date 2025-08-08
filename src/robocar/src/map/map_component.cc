@@ -17,6 +17,8 @@ namespace robocar
 		{
 			// params
 			_trace = load_waypoints(params.get("map").to_string());
+			_map_geofeatures = std::filesystem::canonical(params.get("map_geofeatures").to_string()).string();
+			_map_virtual_geofeatures = std::filesystem::canonical(params.get("map_virtual_geofeatures").to_string()).string();
 			_waypoints_length = params.get("waypoints_length").to_int();
 			if (_waypoints_length <= 0)
 			{
@@ -53,9 +55,51 @@ namespace robocar
 			_loc.sigma_x = 0.0;
 			_loc.sigma_y = 0.0;
 
+			// load map markers
+			_geofeature_markers = get_geofeature_markers();
+			_virtual_geofeature_markers = get_virtual_geofeature_markers();
+
+			// create trace marker
+			_trace_marker.id = 0;
+			_trace_marker.header.stamp = this->get_clock()->now();
+			_trace_marker.header.frame_id = "map";
+			_trace_marker.action = visualization_msgs::msg::Marker::ADD;
+			_trace_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+			_trace_marker.pose.orientation.w = 1.0;
+			_trace_marker.scale.x = 0.4;
+			_trace_marker.scale.y = 0.4;
+			_trace_marker.color.a = 0.5f;
+			_trace_marker.color.r = 0.7f;
+			_trace_marker.color.g = 0.7f;
+			_trace_marker.color.b = 0.7f;
+			for (size_t i = 0; i < _trace.waypoints.size(); i++)
+			{
+				geometry_msgs::msg::Point point;
+				point.x = _trace.waypoints[i].x;
+				point.y = _trace.waypoints[i].y;
+				_trace_marker.points.push_back(point);
+			}
+
+			// waypoints marker
+			_waypoints_marker.id = 0;
+			_waypoints_marker.header.stamp = this->get_clock()->now();
+			_waypoints_marker.header.frame_id = "map";
+			_waypoints_marker.action = visualization_msgs::msg::Marker::ADD;
+			_waypoints_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+			_waypoints_marker.pose.orientation.w = 1.0;
+			_waypoints_marker.scale.x = 0.5;
+			_waypoints_marker.scale.y = 0.5;
+			_waypoints_marker.color.a = 0.5f;
+			_waypoints_marker.color.r = 0.0f;
+			_waypoints_marker.color.g = 0.0f;
+			_waypoints_marker.color.b = 0.5f;
+
 			// publishers
-			_pub_path_trace = this->create_publisher<msg::Path>("map/trace", 1);
-			_pub_path_waypoints = this->create_publisher<msg::Path>("map/waypoints", 1);
+			_pub_waypoints = this->create_publisher<msg::Path>("map/waypoints", 1);
+			_pub_geofeatures = this->create_publisher<visualization_msgs::msg::MarkerArray>("viz/map/geofeatures", 1);
+			_pub_virtual_geofeatures = this->create_publisher<visualization_msgs::msg::MarkerArray>("viz/map/virtual_geofeatures", 1);
+			_pub_trace_marker = this->create_publisher<visualization_msgs::msg::Marker>("viz/map/trace", 1);
+			_pub_waypoints_marker = this->create_publisher<visualization_msgs::msg::Marker>("viz/map/waypoints", 1);
 			// subscribers
 			_sub_loc = this->create_subscription<msg::Localization>("localization/position", 1,
 																	std::bind(&MapComponent::on_localization,
@@ -204,12 +248,6 @@ namespace robocar
 
 		void MapComponent::serve()
 		{
-			// publish trace
-			if (_pub_trace)
-			{
-				_pub_path_trace->publish(_trace);
-				_pub_trace = false;
-			}
 			// check trace
 			if (_trace.waypoints.empty())
 			{
@@ -311,8 +349,49 @@ namespace robocar
 					d += _waypoints_delta;
 				}
 			}
+			_pub_waypoints->publish(waypoints_lane);
 
-			_pub_path_waypoints->publish(waypoints_lane);
+			// publish geofeature markers
+			for (size_t i = 0; i < _geofeature_markers.markers.size(); i++)
+			{
+				_geofeature_markers.markers.at(i).header.stamp = loc.header.stamp;
+			}
+			for (size_t i = 0; i < _virtual_geofeature_markers.markers.size(); i++)
+			{
+				_virtual_geofeature_markers.markers.at(i).header.stamp = loc.header.stamp;
+			}
+			_pub_geofeatures->publish(_geofeature_markers);
+			_pub_virtual_geofeatures->publish(_virtual_geofeature_markers);
+
+			// publish trace marker
+			_trace_marker.header.stamp = loc.header.stamp;
+			_pub_trace_marker->publish(_trace_marker);
+
+			// publish waypoints marker
+			if (waypoints_lane.waypoints.size() > 0)
+			{
+				_waypoints_marker.header.stamp = loc.header.stamp;
+
+				if (waypoints_lane.waypoints.size() > 1)
+				{
+					_waypoints_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+				}
+				else
+				{
+					_waypoints_marker.type = visualization_msgs::msg::Marker::POINTS;
+				}
+
+				_waypoints_marker.points.clear();
+				for (size_t i = 0; i < waypoints_lane.waypoints.size(); i++)
+				{
+					geometry_msgs::msg::Point point;
+					point.x = waypoints_lane.waypoints[i].x;
+					point.y = waypoints_lane.waypoints[i].y;
+					_waypoints_marker.points.push_back(point);
+				}
+
+				_pub_waypoints_marker->publish(_waypoints_marker);
+			}
 		}
 
 		size_t MapComponent::get_closest_waypoint(size_t frame_counter)
@@ -347,6 +426,124 @@ namespace robocar
 				counter++;
 			}
 			return tmp_index;
+		}
+
+		visualization_msgs::msg::MarkerArray MapComponent::get_geofeature_markers()
+		{
+			visualization_msgs::msg::MarkerArray geofeatures;
+
+			if (!std::filesystem::exists(_map_geofeatures))
+				throw std::runtime_error("map geofeatures file does not exist '" + _map_geofeatures + "'");
+
+			std::ifstream fs(_map_geofeatures, std::ios::in);
+			std::string json((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
+			rapidjson::Document d;
+			d.Parse(json.c_str());
+			if (!d.IsObject())
+				throw std::runtime_error("unable to parse geofeatures map file '" + _map_geofeatures + "'");
+
+			visualization_msgs::msg::Marker feature_marker;
+			feature_marker.id = 0;
+			feature_marker.header.stamp = this->get_clock()->now();
+			feature_marker.header.frame_id = "map";
+			feature_marker.lifetime = rclcpp::Duration(0, 0);
+			feature_marker.action = visualization_msgs::msg::Marker::ADD;
+			feature_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+			feature_marker.pose.orientation.w = 1.0;
+			feature_marker.scale.x = 0.25;
+			feature_marker.scale.y = 0.25;
+			feature_marker.color.a = 0.5f;
+			feature_marker.color.r = 66.0f / 255.0f;
+			feature_marker.color.g = 245.0f / 255.0f;
+			feature_marker.color.b = 221.0f / 255.0f;
+
+			rapidjson::Value &features = d["features"];
+			for (int i = 0; i < static_cast<int>(features.Size()); i++)
+			{
+				rapidjson::Value &feature = features[i];
+				rapidjson::Value &coordinates = feature["geometry"]["coordinates"];
+
+				feature_marker.id = i;
+				feature_marker.points.clear();
+				for (size_t j = 0; j < static_cast<int>(coordinates.Size()); j++)
+				{
+					double longitude = coordinates[j][0].GetDouble();
+					double latitude = coordinates[j][1].GetDouble();
+					auto pos = geodesy::Geodesy::get_pos(latitude * M_PI / 180.0,
+														 longitude * M_PI / 180.0);
+					geometry_msgs::msg::Point point;
+					point.x = pos.x();
+					point.y = pos.y();
+					feature_marker.points.push_back(point);
+				}
+
+				if (!feature_marker.points.empty())
+				{
+					geofeatures.markers.push_back(feature_marker);
+				}
+			}
+			fs.close();
+
+			return geofeatures;
+		}
+
+		visualization_msgs::msg::MarkerArray MapComponent::get_virtual_geofeature_markers()
+		{
+			visualization_msgs::msg::MarkerArray virtual_geofeatures;
+
+			if (!std::filesystem::exists(_map_virtual_geofeatures))
+				throw std::runtime_error("map virtual geofeatures file does not exist '" + _map_virtual_geofeatures + "'");
+
+			std::ifstream fs(_map_virtual_geofeatures, std::ios::in);
+			std::string json((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
+			rapidjson::Document d;
+			d.Parse(json.c_str());
+			if (!d.IsObject())
+				throw std::runtime_error("unable to parse virtual geofeatures map file '" + _map_virtual_geofeatures + "'");
+
+			visualization_msgs::msg::Marker feature_marker;
+			feature_marker.id = 0;
+			feature_marker.header.stamp = this->get_clock()->now();
+			feature_marker.header.frame_id = "map";
+			feature_marker.lifetime = rclcpp::Duration(0, 0);
+			feature_marker.action = visualization_msgs::msg::Marker::ADD;
+			feature_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+			feature_marker.pose.orientation.w = 1.0;
+			feature_marker.scale.x = 0.25;
+			feature_marker.scale.y = 0.25;
+			feature_marker.color.a = 0.5f;
+			feature_marker.color.r = 215.0f / 255.0f;
+			feature_marker.color.g = 191.0f / 255.0f;
+			feature_marker.color.b = 69.0f / 255.0f;
+
+			rapidjson::Value &features = d["features"];
+			for (int i = 0; i < static_cast<int>(features.Size()); ++i)
+			{
+				rapidjson::Value &feature = features[i];
+				rapidjson::Value &coordinates = feature["geometry"]["coordinates"];
+
+				feature_marker.id = i;
+				feature_marker.points.clear();
+				for (size_t j = 0; j < static_cast<int>(coordinates.Size()); j++)
+				{
+					double longitude = coordinates[j][0].GetDouble();
+					double latitude = coordinates[j][1].GetDouble();
+					auto pos = geodesy::Geodesy::get_pos(latitude * M_PI / 180.0,
+														 longitude * M_PI / 180.0);
+					geometry_msgs::msg::Point point;
+					point.x = pos.x();
+					point.y = pos.y();
+					feature_marker.points.push_back(point);
+				}
+
+				if (!feature_marker.points.empty())
+				{
+					virtual_geofeatures.markers.push_back(feature_marker);
+				}
+			}
+			fs.close();
+
+			return virtual_geofeatures;
 		}
 
 		void MapComponent::on_localization(const msg::Localization &loc)

@@ -127,7 +127,7 @@ namespace robocar
             mppi_params.stop_velocity = params.get("stop_velocity").to_double();
             _mppi.reset(new mppi::MPPI(mppi_params));
 
-            _prev_planning.header.stamp = robocar::utils::unix_ms_to_ros_time(0);
+            _prev_planning.header.stamp = rclcpp::Time(0);
             _prev_planning.header.frame_id = "map";
             _prev_planning.state = STATE_STANDBY;
             _prev_planning.target_velocity = _target_velocity;
@@ -135,7 +135,7 @@ namespace robocar
             _prev_planning.obstacle_d = -1.0;
             _prev_planning.obstacle_dv = 0.0;
 
-            _prev_tfl.header.stamp = robocar::utils::unix_ms_to_ros_time(0);
+            _prev_tfl.header.stamp = rclcpp::Time(0);
             _prev_tfl.header.frame_id = "vehicle";
             _prev_tfl.type = OBJ_NONE;
             _prev_tfl.ground_center.x = 0.0;
@@ -151,13 +151,28 @@ namespace robocar
             _prev_tfl.velocity.y = 0.0;
             _prev_tfl.velocity.z = 0.0;
 
-            _tfl_input.header.stamp = robocar::utils::unix_ms_to_ros_time(0);
+            _tfl_input.header.stamp = rclcpp::Time(0);
             _tfl_input.type = OBJ_TFL_NONE;
+
+            // trajectory marker
+            _trajectory_marker.id = 1;
+            _trajectory_marker.header.stamp = this->get_clock()->now();
+            _trajectory_marker.header.frame_id = "map";
+            _trajectory_marker.action = visualization_msgs::msg::Marker::ADD;
+            _trajectory_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+            _trajectory_marker.pose.orientation.w = 1.0;
+            _trajectory_marker.scale.x = 0.5;
+            _trajectory_marker.scale.y = 0.5;
+            _trajectory_marker.color.a = 0.5f;
+            _trajectory_marker.color.r = 0.2f;
+            _trajectory_marker.color.g = 1.0f;
+            _trajectory_marker.color.b = 0.2f;
 
             // publishers
             _pub_trajectory = this->create_publisher<msg::Planning>("planning/trajectory", 1);
-            _pub_objects_circles = this->create_publisher<msg::ObjectsCircles>("planning/objects_circles", 1);
             _pub_tfl = this->create_publisher<msg::Object3d>("planning/traffic_light", 1);
+            _pub_trajectory_marker = this->create_publisher<visualization_msgs::msg::Marker>("viz/planning/trajectory", 1);
+            _pub_obj_circles_markers = this->create_publisher<visualization_msgs::msg::MarkerArray>("viz/planning/objects_circles", 2);
             // subscribers
             _sub_status = this->create_subscription<msg::Vehicle>("vehicle/status", 1,
                                                                   std::bind(&PlanningComponent::on_vehicle_status,
@@ -226,11 +241,11 @@ namespace robocar
             // add to 3D objects
             objects3d.objects.push_back(v_tfl);
 
-            // build object circles
-            auto objects = get_object_circles(loc, objects3d, waypoints);
+            // build objects circles
+            auto objects = get_objects_circles(loc, objects3d, waypoints);
 
             // objects window
-            msg::ObjectsCircles __objects;
+            std::vector<float> __objects;
             _objects_window[_objects_window_index] = std::move(objects);
             if (_objects_window_index < (_objects_window.size() - 1))
             {
@@ -244,12 +259,12 @@ namespace robocar
             {
                 if (!_objects_window[i].empty())
                 {
-                    __objects.data.reserve(__objects.data.size() + _objects_window[i].size());
-                    __objects.data.insert(__objects.data.end(), _objects_window[i].begin(),
-                                          _objects_window[i].end());
+                    __objects.reserve(__objects.size() + _objects_window[i].size());
+                    __objects.insert(__objects.end(), _objects_window[i].begin(),
+                                     _objects_window[i].end());
                 }
             }
-            size_t nb_objects = __objects.data.size() / _object_dim;
+            size_t nb_objects = __objects.size() / _object_dim;
 
             // MPPI state
             std::vector<float> __state = {static_cast<float>(loc.x),
@@ -275,7 +290,7 @@ namespace robocar
 
             // run MPPI
             std::vector<mppi::Waypoint> trajectory = _mppi->run(__state, __waypoints,
-                                                                __objects.data);
+                                                                __objects);
             for (auto &w : trajectory)
             {
                 msg::Waypoint waypoint;
@@ -287,6 +302,8 @@ namespace robocar
                 waypoint.accel = w.accel();
                 planning.trajectory.waypoints.push_back(waypoint);
             }
+
+            // TODO use kalman filter for obstacle distance estimation
 
             // collision checker using direction
             double dir_x = loc.x;
@@ -302,9 +319,9 @@ namespace robocar
             size_t offset_o = 0;
             for (size_t i = 0; i < nb_objects; i++)
             {
-                double obj_x = __objects.data[offset_o];
-                double obj_y = __objects.data[offset_o + 1];
-                double obj_r = __objects.data[offset_o + 2];
+                double obj_x = __objects[offset_o];
+                double obj_y = __objects[offset_o + 1];
+                double obj_r = __objects[offset_o + 2];
                 double dx = obj_x - loc.x;
                 double dy = obj_y - loc.y;
                 double dist = std::sqrt(dx * dx + dy * dy);
@@ -315,7 +332,7 @@ namespace robocar
                 {
                     if ((dist < planning.obstacle_d) || (planning.obstacle_d == -1.0))
                     {
-                        planning.obstacle_type = __objects.data[offset_o + 3];
+                        planning.obstacle_type = __objects[offset_o + 3];
                         planning.obstacle_d = dist;
                     }
                 }
@@ -329,19 +346,19 @@ namespace robocar
                 size_t offset_o = 0;
                 for (size_t i = 0; i < nb_objects; i++)
                 {
-                    double dx = __objects.data[offset_o] - waypoint.x;
-                    double dy = __objects.data[offset_o + 1] - waypoint.y;
-                    double dist = std::sqrt(dx * dx + dy * dy) - __objects.data[offset_o + 2];
+                    double dx = __objects[offset_o] - waypoint.x;
+                    double dy = __objects[offset_o + 1] - waypoint.y;
+                    double dist = std::sqrt(dx * dx + dy * dy) - __objects[offset_o + 2];
 
                     if (dist <= 0.0)
                     {
-                        dx = __objects.data[offset_o] - loc.x;
-                        dy = __objects.data[offset_o + 1] - loc.y;
+                        dx = __objects[offset_o] - loc.x;
+                        dy = __objects[offset_o + 1] - loc.y;
                         dist = std::sqrt(dx * dx + dy * dy);
 
                         if ((dist < planning.obstacle_d) || (planning.obstacle_d == -1.0))
                         {
-                            planning.obstacle_type = __objects.data[offset_o + 3];
+                            planning.obstacle_type = __objects[offset_o + 3];
                             planning.obstacle_d = dist;
                         }
                     }
@@ -403,12 +420,40 @@ namespace robocar
             }
             planning.state = _state;
 
-            // publish
+            // publish planning and traffic light
             _pub_trajectory->publish(planning);
-            _pub_objects_circles->publish(__objects);
             _pub_tfl->publish(tfl);
             _prev_planning = planning;
             _prev_tfl = tfl;
+
+            // publish trajectory marker
+            if (planning.trajectory.waypoints.size() > 0)
+            {
+                _trajectory_marker.header.stamp = loc_stamp;
+
+                if (planning.trajectory.waypoints.size() > 1)
+                {
+                    _trajectory_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+                }
+                else
+                {
+                    _trajectory_marker.type = visualization_msgs::msg::Marker::POINTS;
+                }
+
+                _trajectory_marker.points.clear();
+                for (auto &waypoint : planning.trajectory.waypoints)
+                {
+                    geometry_msgs::msg::Point point;
+                    point.x = waypoint.x;
+                    point.y = waypoint.y;
+                    _trajectory_marker.points.push_back(point);
+                }
+
+                _pub_trajectory_marker->publish(_trajectory_marker);
+            }
+
+            // publish objects circles markers
+            _pub_obj_circles_markers->publish(get_obj_circles_markers(__objects, loc));
         }
 
         msg::Object3d PlanningComponent::traffic_light_match(uint64_t now,
@@ -596,9 +641,9 @@ namespace robocar
             return p_tfl;
         }
 
-        std::vector<float> PlanningComponent::get_object_circles(const msg::Localization &loc,
-                                                                 const msg::Objects3d &objects,
-                                                                 const msg::Path &waypoints)
+        std::vector<float> PlanningComponent::get_objects_circles(const msg::Localization &loc,
+                                                                  const msg::Objects3d &objects,
+                                                                  const msg::Path &waypoints)
         {
             std::vector<float> obj_circles;
             obj_circles.reserve(objects.objects.size() * 2 * _object_dim);
@@ -719,6 +764,58 @@ namespace robocar
             }
 
             return obj_circles;
+        }
+
+        visualization_msgs::msg::MarkerArray PlanningComponent::get_obj_circles_markers(const std::vector<float> &objects_circles,
+                                                                                        const msg::Localization &loc)
+        {
+            auto now = loc.header.stamp;
+            size_t object_dim = 4;
+            size_t nb_circles = objects_circles.size() / object_dim;
+            _circles_markers.markers.clear();
+
+            if (_prev_nb_circles > nb_circles)
+            {
+                visualization_msgs::msg::Marker marker;
+                marker.id = -1;
+                marker.header.stamp = now;
+                marker.header.frame_id = "map";
+                marker.ns = "object_circle";
+                marker.action = visualization_msgs::msg::Marker::DELETEALL;
+                _circles_markers.markers.push_back(marker);
+            }
+            _prev_nb_circles = nb_circles;
+
+            size_t offset = 0;
+            for (size_t i = 0; i < nb_circles; i++)
+            {
+                visualization_msgs::msg::Marker marker;
+                marker.id = i;
+                marker.header.stamp = now;
+                marker.header.frame_id = "map";
+                marker.ns = "object_circle";
+                marker.action = visualization_msgs::msg::Marker::ADD;
+                marker.type = visualization_msgs::msg::Marker::CYLINDER;
+                marker.pose.position.x = objects_circles[offset];
+                marker.pose.position.y = objects_circles[offset + 1];
+                marker.pose.position.z = 0.0;
+                marker.pose.orientation.x = 0.0;
+                marker.pose.orientation.y = 0.0;
+                marker.pose.orientation.z = 0.0;
+                marker.pose.orientation.w = 1.0;
+                marker.scale.x = 2.0 * objects_circles[offset + 2]; // diameter of the circle
+                marker.scale.y = 2.0 * objects_circles[offset + 2]; // diameter of the circle
+                marker.scale.z = 0.05;                              // thickness of the circle
+                marker.color.a = 0.7f;
+                marker.color.r = 0.95f;
+                marker.color.g = 0.95f;
+                marker.color.b = 0.95f;
+                _circles_markers.markers.push_back(marker);
+
+                offset += object_dim;
+            }
+
+            return _circles_markers;
         }
 
         double PlanningComponent::dir_obj_dist(double x, double y, double yaw,

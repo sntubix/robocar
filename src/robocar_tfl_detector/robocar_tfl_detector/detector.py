@@ -28,11 +28,11 @@ class Detector(Node):
             depth=1,
             durability=rclpy.qos.DurabilityPolicy.VOLATILE
         )
-        self._sub_image = self.create_subscription(CompressedImage,
-                                                   "sensors/camera/compressed",
-                                                   self.on_frame, qos_profile)
+        self._sub_camera = self.create_subscription(CompressedImage,
+                                                    "sensors/camera_0/compressed",
+                                                    self.on_camera, qos_profile)
 
-    def on_frame(self, frame: CompressedImage):
+    def on_camera(self, frame: CompressedImage):
         img = np.frombuffer(frame.data, np.uint8)
         if img.size == 0:
             return
