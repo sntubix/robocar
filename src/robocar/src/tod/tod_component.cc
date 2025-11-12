@@ -99,7 +99,6 @@ TODComponent::TODComponent(const robocar::Params &params) : robocar::Component(p
     }
 
     // init ZMQ
-    // TODO buffer memory limit
     _context = zmq::context_t(2);
     _sock_data = zmq::socket_t(_context, zmq::socket_type::push);
     _sock_data.bind("tcp://*:5000");

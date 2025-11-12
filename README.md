@@ -62,14 +62,16 @@ Safety checks are implemented in the [`vehicle_component`](./src/robocar/src/veh
 ## Citation
 If you find RoboCar useful or relevant for your research, please cite our paper:
 ```bibtex
-@article{testouri2024robocar,
-  title={RoboCar: A Rapidly Deployable Open-Source Platform for Autonomous Driving Research},
-  author={Mehdi Testouri and Gamal Elghazaly and Raphael Frank},
-  year={2024},
-  eprint={2405.03572},
-  archivePrefix={arXiv},
-  primaryClass={cs.RO}
-}
+@ARTICLE{10924789,
+  author={Testouri, Mehdi and Elghazaly, Gamal and Frank, Raphael},
+  journal={IEEE Intelligent Transportation Systems Magazine}, 
+  title={RoboCar: A Rapidly Deployable Open Source Platform for Autonomous Driving Research}, 
+  year={2025},
+  volume={17},
+  number={4},
+  pages={83-95},
+  keywords={Hardware;Cameras;Autonomous vehicles;Laser radar;Middleware;Computer architecture;Location awareness;Full stack;Automobiles;Urban areas;Autonomous driving},
+  doi={10.1109/MITS.2025.3546755}}
 ```
 
 ## License

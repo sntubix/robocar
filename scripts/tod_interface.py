@@ -4,6 +4,7 @@
 
 import os
 import argparse
+import threading
 import subprocess
 import time, json
 from typing import List, Tuple, Dict
@@ -27,8 +28,13 @@ class TodInterface():
         self._eval_t_steer = pd.Series()
         self._prev_vd_stamp = 0
 
+        self._zmq_context = zmq.Context(2)
+        self._lock_msg_data = threading.Lock()
+        self._msg_data = None
+
         self._vehicle_host = v_host
         self._vehicle_data = {
+            'stamp': 0,
             'tod_msg_stamp': 0,
             'ad_engaged': False,
             'steering': 0.0,
@@ -85,15 +91,29 @@ class TodInterface():
 
         raise ValueError(f"unsupported input: {input}")
 
-    def run(self):
-        _context = zmq.Context(2)
-        _poller = zmq.Poller()
 
-        _sock_data = _context.socket(zmq.PULL)
+    def recv_data(self):
+        _sock_data = self._zmq_context.socket(zmq.PULL)
         _sock_data.connect(f"tcp://{self._vehicle_host}:5000")
+
+        _poller = zmq.Poller()
         _poller.register(_sock_data, zmq.POLLIN)
 
-        _sock_cmd = _context.socket(zmq.PUSH)
+        while True:
+            socks = dict(_poller.poll(timeout=20))
+            if (_sock_data in socks) and (socks[_sock_data] == zmq.POLLIN):
+                try:
+                    with self._lock_msg_data:
+                        self._msg_data = _sock_data.recv()
+                except zmq.Again:
+                    continue
+
+
+    def run(self):
+        recv_thread = threading.Thread(target=self.recv_data, daemon=True)
+        recv_thread.start()
+
+        _sock_cmd = self._zmq_context.socket(zmq.PUSH)
         _sock_cmd.connect(f"tcp://{self._vehicle_host}:5001")
 
         if self._cam_source == "rtsp":
@@ -239,46 +259,44 @@ class TodInterface():
                 }
                 _sock_cmd.send_json(tod_msg)
 
-            socks = dict(_poller.poll(timeout=20))
+            try:
+                with self._lock_msg_data:
+                    self._vehicle_data = json.loads(str(self._msg_data, "utf-8"))
+            except:
+                pass
 
-            if (_sock_data in socks) and (socks[_sock_data] == zmq.POLLIN):
-                # receive msg
-                msg_data = _sock_data.recv()
-                now = round(time.time() * 1000.0)
-                # deserialize
-                self._vehicle_data = json.loads(str(msg_data, "utf-8"))
-                vd_stamp_diff = self._vehicle_data['stamp'] - self._prev_vd_stamp
+            now = round(time.time() * 1000.0)
+            vd_stamp_diff = self._vehicle_data['stamp'] - self._prev_vd_stamp
 
-                if tod_engaged and (vd_stamp_diff > 0):
-                    self._prev_vd_stamp = self._vehicle_data['stamp']
+            if tod_engaged and (vd_stamp_diff > 0):
+                self._prev_vd_stamp = self._vehicle_data['stamp']
 
-                    if (self._n_eval_rtt > 0):
-                        self._eval_rtt[self._vehicle_data['stamp']] = now - self._vehicle_data['tod_msg_stamp']
-                        c_eval_rtt += 1
+                if (self._n_eval_rtt > 0):
+                    self._eval_rtt[self._vehicle_data['stamp']] = now - self._vehicle_data['tod_msg_stamp']
+                    c_eval_rtt += 1
 
-                        if c_eval_rtt >= self._n_eval_rtt:
-                            self._eval_rtt.to_csv("tod_eval_rtt.csv")
-                            self._n_eval_rtt = 0
-                            print("RTT evaluation done, saved tod_eval_rtt.csv")
+                    if c_eval_rtt >= self._n_eval_rtt:
+                        self._eval_rtt.to_csv("tod_eval_rtt.csv")
+                        self._n_eval_rtt = 0
+                        print("RTT evaluation done, saved tod_eval_rtt.csv")
 
-                    if ad_engaged and (self._n_eval_steer > 0):
-                        self._eval_v_steer[self._vehicle_data['stamp']] = self._vehicle_data['steering_n']
-                        self._eval_t_steer[tod_msg['stamp']] = tod_msg['steering']
-                        c_eval_steer += 1
+                if ad_engaged and (self._n_eval_steer > 0):
+                    self._eval_v_steer[self._vehicle_data['stamp']] = self._vehicle_data['steering_n']
+                    self._eval_t_steer[tod_msg['stamp']] = tod_msg['steering']
+                    c_eval_steer += 1
 
-                        if c_eval_steer >= self._n_eval_steer:
-                            # self._eval_v_steer.to_csv("tod_eval_v_steer.csv")
-                            # self._eval_t_steer.to_csv("tod_eval_t_steer.csv")
-                            steer_lat = pd.merge(self._eval_v_steer.rename('v_steer'),
-                                                 self._eval_t_steer.rename('t_steer'),
-                                                 left_index=True, right_index=True, how='outer').sort_index()
-                            steer_lat.interpolate(method='linear', inplace=True)
-                            steer_lat.to_csv("tod_eval_steer_lat.csv")
-                            self._n_eval_steer = 0
-                            print("steering latency evaluation done, saved tod_eval_steer_lat.csv")
+                    if c_eval_steer >= self._n_eval_steer:
+                        # self._eval_v_steer.to_csv("tod_eval_v_steer.csv")
+                        # self._eval_t_steer.to_csv("tod_eval_t_steer.csv")
+                        steer_lat = pd.merge(self._eval_v_steer.rename('v_steer'),
+                                             self._eval_t_steer.rename('t_steer'),
+                                             left_index=True, right_index=True, how='outer').sort_index()
+                        steer_lat.interpolate(method='linear', inplace=True)
+                        steer_lat.to_csv("tod_eval_steer_lat.csv")
+                        self._n_eval_steer = 0
+                        print("steering latency evaluation done, saved tod_eval_steer_lat.csv")
 
             ad_engaged = self._vehicle_data['ad_engaged']
-            #TODO ZMQ buffers lag?
 
             # UI layout
             self._width, self._height = pygame.display.get_surface().get_size()
@@ -322,7 +340,7 @@ class TodInterface():
 
             pygame.display.update()
             screen.fill((0, 0, 0))
-            clock.tick(120)
+            clock.tick(100)
 
 
 def main():
